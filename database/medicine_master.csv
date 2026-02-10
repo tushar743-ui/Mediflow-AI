@@ -1,0 +1,16 @@
+medicine_name,generic_name,stock_quantity,unit_type,prescription_required,dosage_info,category,price,manufacturer
+Metformin 500mg,Metformin,500,tablets,Yes,500mg twice daily,Diabetes,12.50,PharmaCorp
+Amlodipine 5mg,Amlodipine,300,tablets,Yes,5mg once daily,Hypertension,15.00,CardioMed
+Paracetamol 500mg,Acetaminophen,1000,tablets,No,500mg as needed,Pain Relief,5.00,GenericPharma
+Aspirin 75mg,Aspirin,800,tablets,No,75mg once daily,Cardiovascular,8.00,AspirCo
+Lisinopril 10mg,Lisinopril,200,tablets,Yes,10mg once daily,Hypertension,18.50,HeartCare
+Omeprazole 20mg,Omeprazole,450,capsules,No,20mg once daily,Digestive,10.00,GastroMed
+Atorvastatin 20mg,Atorvastatin,350,tablets,Yes,20mg at bedtime,Cholesterol,22.00,LipidCare
+Levothyroxine 50mcg,Levothyroxine,180,tablets,Yes,50mcg once daily morning,Thyroid,14.00,ThyroMed
+Vitamin D3 1000IU,Cholecalciferol,600,capsules,No,1000IU daily,Vitamin,6.50,VitaHealth
+Amoxicillin 500mg,Amoxicillin,150,capsules,Yes,500mg three times daily,Antibiotic,25.00,AntiBio
+Salbutamol Inhaler,Salbutamol,80,inhaler,Yes,2 puffs as needed,Respiratory,30.00,RespirCare
+Cetirizine 10mg,Cetirizine,700,tablets,No,10mg once daily,Allergy,7.00,AllerMed
+Losartan 50mg,Losartan,220,tablets,Yes,50mg once daily,Hypertension,16.00,CardioMed
+Insulin Glargine,Insulin Glargine,40,vials,Yes,As per doctor,Diabetes,85.00,DiabetesCare
+Clopidogrel 75mg,Clopidogrel,160,tablets,Yes,75mg once daily,Cardiovascular,28.00,HeartCare

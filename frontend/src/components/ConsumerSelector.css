@@ -1,0 +1,124 @@
+.consumer-selector {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.selector-content {
+  background: var(--card-bg);
+  border-radius: var(--radius-lg);
+  padding: 3rem;
+  box-shadow: var(--shadow-lg);
+  animation: fadeIn 0.5s ease-out;
+}
+
+.selector-content h2 {
+  text-align: center;
+  color: var(--text-primary);
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+.selector-subtitle {
+  text-align: center;
+  color: var(--text-secondary);
+  margin-bottom: 2.5rem;
+}
+
+.consumers-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.consumer-card {
+  padding: 1.5rem;
+  background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  text-align: left;
+}
+
+.consumer-card:hover {
+  border-color: var(--primary-color);
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(37, 99, 235, 0.15);
+}
+
+.consumer-avatar {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.consumer-info {
+  flex: 1;
+}
+
+.consumer-info h3 {
+  color: var(--text-primary);
+  font-size: 1.125rem;
+  margin-bottom: 0.25rem;
+}
+
+.consumer-info p {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  margin: 0.125rem 0;
+}
+
+.consumer-info .phone {
+  font-size: 0.75rem;
+}
+
+.consumer-arrow {
+  color: var(--text-secondary);
+  font-size: 1.5rem;
+  transition: all 0.2s;
+}
+
+.consumer-card:hover .consumer-arrow {
+  color: var(--primary-color);
+  transform: translateX(5px);
+}
+
+.demo-note {
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  border-radius: var(--radius-md);
+  padding: 1.5rem;
+  text-align: center;
+  color: var(--text-primary);
+}
+
+.demo-note p {
+  margin: 0;
+  line-height: 1.6;
+}
+
+.demo-note strong {
+  color: var(--primary-dark);
+}
+
+@media (max-width: 768px) {
+  .selector-content {
+    padding: 2rem 1.5rem;
+  }
+
+  .consumers-grid {
+    grid-template-columns: 1fr;
+  }
+}

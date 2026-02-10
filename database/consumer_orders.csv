@@ -1,0 +1,15 @@
+user_id,consumer_name,medicine_name,purchase_date,quantity,dosage_frequency,expected_depletion_days
+1,John Smith,Metformin 500mg,2024-12-15,60,twice daily,30
+1,John Smith,Amlodipine 5mg,2024-12-15,30,once daily,30
+2,Sarah Johnson,Lisinopril 10mg,2025-01-05,30,once daily,30
+2,Sarah Johnson,Atorvastatin 20mg,2025-01-05,30,once at bedtime,30
+3,Michael Chen,Levothyroxine 50mcg,2025-01-20,30,once daily morning,30
+3,Michael Chen,Vitamin D3 1000IU,2025-01-20,60,once daily,60
+1,John Smith,Metformin 500mg,2025-01-14,60,twice daily,30
+1,John Smith,Amlodipine 5mg,2025-01-14,30,once daily,30
+4,Emma Davis,Salbutamol Inhaler,2024-11-10,1,as needed,90
+4,Emma Davis,Cetirizine 10mg,2025-01-15,30,once daily,30
+5,Robert Wilson,Losartan 50mg,2024-12-20,30,once daily,30
+5,Robert Wilson,Aspirin 75mg,2024-12-20,90,once daily,90
+2,Sarah Johnson,Lisinopril 10mg,2024-12-06,30,once daily,30
+3,Michael Chen,Levothyroxine 50mcg,2024-12-21,30,once daily morning,30
