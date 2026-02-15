@@ -1,7 +1,9 @@
-import { ChatOpenAI } from '@langchain/openai';
+
+import { ChatGroq } from "@langchain/groq";
 import { AgentTracer } from '../config/langfuse.js';
 import { query } from '../config/database.js';
 import { differenceInDays, addDays, parseISO } from 'date-fns';
+
 
 /**
  * Predictive Intelligence Agent
@@ -9,13 +11,14 @@ import { differenceInDays, addDays, parseISO } from 'date-fns';
  * Works on scheduled basis and event triggers
  */
 export class PredictiveIntelligenceAgent {
-  constructor() {
-    this.model = new ChatOpenAI({
-      modelName: 'gpt-4-turbo-preview',
-      temperature: 0.1,
-      openAIApiKey: process.env.OPENAI_API_KEY,
-    });
-  }
+constructor() {
+  this.model = new ChatGroq({
+    model: 'llama-3.3-70b-versatile',
+    temperature: 0.3,
+    apiKey: process.env.GROQ_API_KEY, // Free at console.groq.com
+  });
+}
+
 
   /**
    * Analyze all consumers and predict refill needs

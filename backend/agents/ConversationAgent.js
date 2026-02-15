@@ -1,6 +1,8 @@
-import { ChatOpenAI } from '@langchain/openai';
+
 import { AgentTracer } from '../config/langfuse.js';
 import { query } from '../config/database.js';
+import { ChatGroq } from "@langchain/groq";
+
 
 /**
  * Conversation Agent - Front-Facing AI
@@ -8,13 +10,14 @@ import { query } from '../config/database.js';
  * Extracts intent and entities from natural language
  */
 export class ConversationAgent {
-  constructor() {
-    this.model = new ChatOpenAI({
-      modelName: 'gpt-4-turbo-preview',
-      temperature: 0.3,
-      openAIApiKey: process.env.OPENAI_API_KEY,
-    });
-  }
+constructor() {
+  this.model = new ChatGroq({
+    model: 'llama-3.3-70b-versatile',
+    temperature: 0.3,
+    apiKey: process.env.GROQ_API_KEY, // Free at console.groq.com
+  });
+}
+
 
   /**
    * Extract structured intent from user message
@@ -60,7 +63,7 @@ Analyze and extract intent:`;
       const generation = tracer.addGeneration(
         'llm_intent_extraction',
         { systemPrompt, prompt },
-        'gpt-4-turbo-preview'
+        'gpt-4o'
       );
 
       const response = await this.model.invoke([
@@ -102,66 +105,128 @@ Analyze and extract intent:`;
     }
   }
 
+
+
+
+
+
+
+
+
   /**
    * Fuzzy match medicine names from user input
    */
-  async fuzzyMatchMedicine(medicineName, sessionId) {
-    const tracer = new AgentTracer(sessionId, 'conversation');
-    tracer.startTrace('fuzzy_match_medicine');
+async fuzzyMatchMedicine(medicineName, sessionId) {
+  const tracer = new AgentTracer(sessionId, 'conversation');
+  tracer.startTrace('fuzzy_match_medicine');
 
-    try {
-      // Get all medicines from database
-      const result = await query(
-        'SELECT medicine_name, generic_name FROM medicines'
-      );
+  try {
+    // Get all medicines from database
+    const result = await query(
+      'SELECT medicine_name, generic_name FROM medicines'
+    );
 
-      const medicines = result.rows;
-      
-      // Use LLM to find best match
-      const systemPrompt = `You are a medicine name matcher. Given a user's input and a list of available medicines, find the best match.
+    const medicines = result.rows;
+    
+    // Use LLM to find best match
+    const systemPrompt = `You are a medicine name matcher. Given a user's input and a list of available medicines, find the best match.
 Consider:
 - Common misspellings
 - Generic vs brand names
 - Partial matches
 - Common abbreviations (e.g., "BP meds" = blood pressure medications)
 
-Return JSON:
+CRITICAL: Return ONLY valid JSON in this exact format with no other text:
 {
   "matched_medicine": "exact medicine name from list or null",
-  "confidence": 0.0 to 1.0,
+  "confidence": 0.95,
   "alternatives": ["other possible matches"]
+}
+
+If no match found:
+{
+  "matched_medicine": null,
+  "confidence": 0,
+  "alternatives": []
 }`;
 
-      const prompt = `User mentioned: "${medicineName}"
+    const prompt = `User mentioned: "${medicineName}"
 
 Available medicines:
 ${medicines.map(m => `- ${m.medicine_name} (${m.generic_name})`).join('\n')}
 
-Find the best match:`;
+Return ONLY the JSON object:`;
 
-      const response = await this.model.invoke([
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: prompt }
-      ]);
+    const response = await this.model.invoke([
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: prompt }
+    ]);
 
-      const jsonMatch = response.content.match(/\{[\s\S]*\}/);
-      const match = jsonMatch ? JSON.parse(jsonMatch[0]) : { matched_medicine: null, confidence: 0 };
-
-      tracer.logDecision(
-        `Matched: ${match.matched_medicine}`,
-        `Confidence: ${match.confidence}`,
-        match
-      );
-
-      await tracer.end(match);
-      return match;
-
-    } catch (error) {
-      console.error('Error in fuzzy matching:', error);
-      await tracer.end({ error: error.message }, { status: 'error' });
-      throw error;
+    // Clean up response
+    let jsonText = response.content.trim();
+    
+    // Remove markdown code blocks
+    jsonText = jsonText.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+    
+    // Extract JSON from text (in case there's extra text)
+    const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
+    
+    if (!jsonMatch) {
+      console.error('No JSON found in response:', response.content);
+      throw new Error('Invalid response format from LLM');
     }
+
+    const match = JSON.parse(jsonMatch[0]);
+
+    // Validate the response structure
+    if (typeof match.matched_medicine === 'undefined' || typeof match.confidence === 'undefined') {
+      console.error('Invalid match structure:', match);
+      throw new Error('LLM returned invalid JSON structure');
+    }
+
+    tracer.logDecision(
+      `Matched: ${match.matched_medicine}`,
+      `Confidence: ${match.confidence}`,
+      match
+    );
+
+    await tracer.end(match);
+    return match;
+
+  } catch (error) {
+    console.error('Error in fuzzy matching:', error);
+    console.error('Medicine name attempted:', medicineName);
+    
+    await tracer.end({ error: error.message }, { status: 'error' });
+    
+    // Fallback: Try exact match from database
+    const exactMatch = medicines.find(m => 
+      m.medicine_name.toLowerCase() === medicineName.toLowerCase() ||
+      m.generic_name.toLowerCase() === medicineName.toLowerCase()
+    );
+    
+    if (exactMatch) {
+      console.log('Falling back to exact match:', exactMatch.medicine_name);
+      return {
+        matched_medicine: exactMatch.medicine_name,
+        confidence: 1.0,
+        alternatives: []
+      };
+    }
+    
+    // No match at all - return null
+    return {
+      matched_medicine: null,
+      confidence: 0,
+      alternatives: []
+    };
   }
+}
+
+
+
+
+
 
   /**
    * Generate conversational response

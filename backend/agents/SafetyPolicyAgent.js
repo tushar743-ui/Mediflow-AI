@@ -1,4 +1,5 @@
-import { ChatOpenAI } from '@langchain/openai';
+
+import { ChatGroq } from "@langchain/groq";
 import { AgentTracer } from '../config/langfuse.js';
 import { query } from '../config/database.js';
 
@@ -8,13 +9,15 @@ import { query } from '../config/database.js';
  * Makes critical go/no-go decisions
  */
 export class SafetyPolicyAgent {
-  constructor() {
-    this.model = new ChatOpenAI({
-      modelName: 'gpt-4-turbo-preview',
-      temperature: 0,
-      openAIApiKey: process.env.OPENAI_API_KEY,
-    });
-  }
+constructor() {
+  this.model = new ChatGroq({
+    model: 'llama-3.3-70b-versatile',
+    temperature: 0.3,
+    apiKey: process.env.GROQ_API_KEY, // Free at console.groq.com
+  });
+}
+
+
 
   /**
    * Comprehensive safety check for an order request
@@ -171,13 +174,29 @@ export class SafetyPolicyAgent {
   /**
    * Get medicine data from database
    */
-  async getMedicineData(medicineName) {
-    const result = await query(
-      `SELECT * FROM medicines WHERE medicine_name ILIKE $1 LIMIT 1`,
-      [medicineName]
-    );
-    return result.rows[0] || null;
+async getMedicineData(medicineName) {
+  // Clean the medicine name - remove anything in parentheses
+  const cleanName = medicineName.split('(')[0].trim();
+  
+  // Try exact match with cleaned name
+  let result = await query(
+    `SELECT * FROM medicines WHERE medicine_name ILIKE $1 LIMIT 1`,
+    [cleanName]
+  );
+  
+  if (result.rows.length > 0) {
+    return result.rows[0];
   }
+  
+  // Fallback: try fuzzy match
+  const firstWord = cleanName.split(' ')[0];
+  result = await query(
+    `SELECT * FROM medicines WHERE medicine_name ILIKE $1 LIMIT 1`,
+    [`%${firstWord}%`]
+  );
+  
+  return result.rows[0] || null;
+}
 
   /**
    * Check stock availability
@@ -260,28 +279,25 @@ export class SafetyPolicyAgent {
    * Check dosage safety using LLM
    */
   async checkDosageSafety(medicineData, orderRequest, tracer) {
-    const systemPrompt = `You are a pharmaceutical safety expert. Evaluate if the requested dosage and quantity are safe and reasonable.
+const systemPrompt = `You are a medicine name matcher. Given a user's input and a list of available medicines, find the best match.
 
-Medicine information:
-- Name: ${medicineData.medicine_name}
-- Standard dosage: ${medicineData.dosage_info}
-- Category: ${medicineData.category}
+Consider:
+- Common misspellings
+- Generic vs brand names
+- Partial matches
+- Common abbreviations
 
-Order request:
-- Quantity: ${orderRequest.quantity} ${medicineData.unit_type}
-- Dosage frequency: ${orderRequest.dosage_frequency || 'not specified'}
+CRITICAL: Return ONLY the exact medicine_name from the available list. Do NOT add generic names in parentheses.
 
-Evaluate:
-1. Is the quantity reasonable for typical use?
-2. Does the dosage frequency align with standard practice?
-3. Are there any red flags?
+For example:
+- If list has "Paracetamol 500mg (Acetaminophen)", return ONLY "Paracetamol 500mg"
+- Do NOT modify or append to the medicine name
 
-Return JSON:
+Return ONLY valid JSON in this exact format with no other text:
 {
-  "passed": true/false,
-  "severity": "ok|warning|critical",
-  "reason": "explanation",
-  "recommendation": "optional suggestion"
+  "matched_medicine": "Paracetamol 500mg",
+  "confidence": 0.95,
+  "alternatives": []
 }`;
 
     try {

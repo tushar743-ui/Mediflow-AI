@@ -256,28 +256,28 @@ export class ActionExecutionAgent {
   /**
    * Send order confirmation (Email/WhatsApp)
    */
-  async sendOrderConfirmation(order, consumer, orderItems, sessionId) {
-    const tracer = new AgentTracer(sessionId, 'action_execution');
-    tracer.startTrace('send_order_confirmation');
+async sendOrderConfirmation(order, consumer, orderItems, sessionId) {
+  const tracer = new AgentTracer(sessionId, 'action_execution');
+  tracer.startTrace('send_order_confirmation');
 
-    try {
-      // Get medicine names for items
-      const medicineIds = orderItems.map(item => item.medicine_id);
-      const medicinesResult = await query(`
-        SELECT id, medicine_name FROM medicines WHERE id = ANY($1)
-      `, [medicineIds]);
+  try {
+    // Get medicine names for items
+    const medicineIds = orderItems.map(item => item.medicine_id);
+    const medicinesResult = await query(`
+      SELECT id, medicine_name FROM medicines WHERE id = ANY($1)
+    `, [medicineIds]);
 
-      const medicineMap = {};
-      medicinesResult.rows.forEach(m => {
-        medicineMap[m.id] = m.medicine_name;
-      });
+    const medicineMap = {};
+    medicinesResult.rows.forEach(m => {
+      medicineMap[m.id] = m.medicine_name;
+    });
 
-      const itemsList = orderItems.map(item => 
-        `- ${medicineMap[item.medicine_id]} x ${item.quantity}`
-      ).join('\n');
+    const itemsList = orderItems.map(item => 
+      `- ${medicineMap[item.medicine_id]} x ${item.quantity}`
+    ).join('\n');
 
-      const message = `
-Order Confirmation - Pharmacy AI
+    const message = `
+Order Confirmation - MediFlow AI
 
 Dear ${consumer.name},
 
@@ -291,51 +291,75 @@ Total: $${order.total_amount}
 Your order will be processed shortly. You'll receive a notification when it's ready for pickup/delivery.
 
 Thank you for choosing our pharmacy!
-      `.trim();
+    `.trim();
 
-      // For development, log to console
-      // In production, integrate with email service (SendGrid, AWS SES) or WhatsApp API
-      console.log('📧 ORDER CONFIRMATION EMAIL:');
-      console.log('To:', consumer.email);
-      console.log('Subject: Order Confirmation #' + order.id);
-      console.log(message);
+    // ✅ NEW: Send notification webhook to Zapier
+    if (process.env.NOTIFICATION_WEBHOOK_URL && 
+        process.env.NOTIFICATION_WEBHOOK_URL !== 'https://hooks.zapier.com/hooks/catch/26394758/ueel75g/') {
+      
+      const notificationPayload = {
+        event: 'order.confirmation',
+        timestamp: new Date().toISOString(),
+        order_id: order.id,
+        customer_name: consumer.name,
+        customer_email: consumer.email || 'no-email@example.com',
+        customer_phone: consumer.phone || '',
+        medicine: medicineMap[orderItems[0].medicine_id], // First item
+        quantity: orderItems[0].quantity,
+        total_amount: order.total_amount,
+        status: 'confirmed',
+        items: itemsList
+      };
 
-      tracer.logToolCall(
-        'send_notification',
-        { 
-          channel: 'email', 
-          recipient: consumer.email,
-          orderId: order.id 
-        },
-        { success: true, mocked: true }
-      );
+      try {
+        console.log('📧 Sending notification webhook to Zapier...');
+        const response = await axios.post(
+          process.env.NOTIFICATION_WEBHOOK_URL, 
+          notificationPayload,
+          {
+            headers: { 'Content-Type': 'application/json' },
+            timeout: 5000
+          }
+        );
 
-      // Mock WhatsApp notification
-      if (consumer.phone) {
-        console.log('📱 WHATSAPP MESSAGE:');
-        console.log('To:', consumer.phone);
-        console.log(`Hi ${consumer.name}! Your pharmacy order #${order.id} is confirmed. Total: $${order.total_amount}`);
-
+        console.log('✅ Notification webhook sent successfully!');
+        
         tracer.logToolCall(
           'send_notification',
           { 
-            channel: 'whatsapp', 
-            recipient: consumer.phone,
+            channel: 'zapier_webhook', 
+            recipient: consumer.email,
             orderId: order.id 
           },
-          { success: true, mocked: true }
+          { success: true, response: response.status }
         );
+      } catch (error) {
+        console.error('❌ Notification webhook failed:', error.message);
       }
-
-      await tracer.end({ success: true, messagesSent: 2 });
-      return { success: true };
-
-    } catch (error) {
-      console.error('Error sending confirmation:', error);
-      await tracer.end({ error: error.message }, { status: 'error' });
-      return { success: false, error: error.message };
     }
+
+    // For development, log to console
+    console.log('📧 ORDER CONFIRMATION EMAIL:');
+    console.log('To:', consumer.email);
+    console.log('Subject: Order Confirmation #' + order.id);
+    console.log(message);
+
+    // Mock WhatsApp notification
+    if (consumer.phone) {
+      console.log('📱 WHATSAPP MESSAGE:');
+      console.log('To:', consumer.phone);
+      console.log(`Hi ${consumer.name}! Your pharmacy order #${order.id} is confirmed. Total: $${order.total_amount}`);
+    }
+
+    await tracer.end({ success: true, messagesSent: 1 });
+    return { success: true };
+
+  } catch (error) {
+    console.error('Error sending confirmation:', error);
+    await tracer.end({ error: error.message }, { status: 'error' });
+    return { success: false, error: error.message };
   }
+}
 
   /**
    * Confirm order and trigger all automation

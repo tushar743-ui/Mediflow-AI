@@ -142,9 +142,18 @@ export class AgentOrchestrator {
     console.log(`🔍 Fuzzy matching medicine: ${medicineName}`);
     
     const medicineMatch = await this.conversationAgent.fuzzyMatchMedicine(
-      medicineName,
-      sessionId
-    );
+  medicineName,
+  sessionId
+);
+
+// Check if clarification needed for dosage
+if (medicineMatch.needs_clarification && medicineMatch.alternatives.length > 0) {
+  return {
+    message: `We have multiple options for ${medicineName}:\n${medicineMatch.alternatives.map((m, i) => `${i+1}. ${m}`).join('\n')}\n\nWhich one would you like?`,
+    requiresClarification: true,
+    alternatives: medicineMatch.alternatives
+  };
+}
 
     if (!medicineMatch.matched_medicine || medicineMatch.confidence < 0.6) {
       return {
@@ -292,8 +301,10 @@ export class AgentOrchestrator {
     };
   }
 
+
   /**
-   * Handle generic intent
+   * 
+   * uheneric intent
    */
   async handleGenericIntent(intent, userMessage, sessionId, tracer) {
     const response = await this.conversationAgent.generateResponse({
@@ -331,6 +342,9 @@ export class AgentOrchestrator {
     return result;
   }
 
+
+
+
   /**
    * Get typical order quantity from history
    */
@@ -352,6 +366,8 @@ export class AgentOrchestrator {
       return null;
     }
   }
+
+
 
   /**
    * Save conversation message
