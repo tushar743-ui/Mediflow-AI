@@ -901,7 +901,11 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { v4 as uuidv4 } from 'uuid';
 import cron from 'node-cron';
-
+import multer from 'multer';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { PrescriptionParser } from './services/PrescriptionParser.js';
+import fs from 'fs/promises';
 // Import database
 import pool, { query } from './config/database.js';
 
@@ -913,6 +917,80 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Configure multer for file uploads
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, path.join(__dirname, 'uploads'));
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = /jpeg|jpg|png|pdf|heic|heif/;
+    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = allowedTypes.test(file.mimetype);
+    
+    if (extname && mimetype) {
+      return cb(null, true);
+    } else {
+      cb(new Error('Only images (JPEG, PNG, HEIC) and PDF files are allowed'));
+    }
+  }
+});
+/**
+ * Upload and parse prescription
+ */
+app.post('/api/prescription/upload', upload.single('prescription'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    console.log('📤 Prescription uploaded:', req.file.originalname);
+
+    // Parse the prescription
+    const result = await prescriptionParser.parsePrescription(
+      req.file.path,
+      req.file.mimetype
+    );
+
+    // Clean up uploaded file
+    await fs.unlink(req.file.path).catch(() => {});
+
+    if (!result.success) {
+      return res.status(400).json({ 
+        error: 'Failed to parse prescription',
+        details: result.error
+      });
+    }
+
+    res.json({
+      success: true,
+      medicines: result.medicines,
+      patientInfo: result.patientInfo,
+      rawText: result.rawText
+    });
+
+  } catch (error) {
+    console.error('Error handling prescription upload:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+// Initialize prescription parser
+const prescriptionParser = new PrescriptionParser();
+const uploadsDir = path.join(__dirname, 'uploads');
+fs.mkdir(uploadsDir, { recursive: true }).catch(console.error);
 
 // Middleware
 app.use(cors());

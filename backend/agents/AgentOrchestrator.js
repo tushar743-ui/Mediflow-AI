@@ -55,11 +55,8 @@ export class AgentOrchestrator {
         case 'refill':
           response = await this.handleOrderIntent(
             intent,
-            userMessage,
-            sessionId,
             consumerId,
-            conversationHistory,
-            tracer
+            sessionId
           );
           break;
 
@@ -92,10 +89,17 @@ export class AgentOrchestrator {
 
       // Save conversation
       await this.saveConversationMessage(sessionId, 'user', userMessage);
-      await this.saveConversationMessage(sessionId, 'assistant', response.message);
+      await this.saveConversationMessage(sessionId, 'assistant', response.message || response.response);
 
       await tracer.end({ response });
-      return response;
+      
+      // Return normalized response
+      return {
+        message: response.message || response.response,
+        orderCreated: response.orderCreated || false,
+        orderId: response.orderId || null,
+        ...response
+      };
 
     } catch (error) {
       console.error('Error in orchestrator:', error);
@@ -111,147 +115,127 @@ export class AgentOrchestrator {
   /**
    * Handle order/refill intent
    */
-  async handleOrderIntent(intent, userMessage, sessionId, consumerId, conversationHistory, tracer) {
+  async handleOrderIntent(intent, consumerId, sessionId) {
     console.log('🛒 Handling order intent...');
 
-    // Check if we need clarification
-    if (intent.clarification_needed && intent.clarification_needed.length > 0) {
-      const clarificationMessage = await this.conversationAgent.generateResponse({
-        type: 'clarification',
-        questions: intent.clarification_needed,
-        context: userMessage
-      }, sessionId);
-
-      return {
-        message: clarificationMessage,
-        requiresClarification: true,
-        intent
-      };
-    }
-
-    // Extract medicine information
+    // Handle multiple medicines
     if (!intent.medicines || intent.medicines.length === 0) {
       return {
-        message: "I'd be happy to help you order medication. Could you please tell me which medicine you need?",
-        requiresClarification: true
+        message: "I'd be happy to help you order medicine. Which medication do you need?",
+        requiresAction: false
       };
     }
 
-    // Fuzzy match medicine
-    const medicineName = intent.medicines[0].name;
-    console.log(`🔍 Fuzzy matching medicine: ${medicineName}`);
-    
-    const medicineMatch = await this.conversationAgent.fuzzyMatchMedicine(
-  medicineName,
-  sessionId
-);
+    // Process all medicines
+    const orderResults = [];
+    const errors = [];
 
-// Check if clarification needed for dosage
-if (medicineMatch.needs_clarification && medicineMatch.alternatives.length > 0) {
-  return {
-    message: `We have multiple options for ${medicineName}:\n${medicineMatch.alternatives.map((m, i) => `${i+1}. ${m}`).join('\n')}\n\nWhich one would you like?`,
-    requiresClarification: true,
-    alternatives: medicineMatch.alternatives
-  };
-}
+    for (const medicineRequest of intent.medicines) {
+      try {
+        console.log(`🔍 Processing medicine: ${medicineRequest.name}`);
+        
+        // Fuzzy match medicine
+        const matchedMedicine = await this.conversationAgent.fuzzyMatchMedicine(
+          medicineRequest.name
+        );
 
-    if (!medicineMatch.matched_medicine || medicineMatch.confidence < 0.6) {
-      return {
-        message: `I couldn't find "${medicineName}" in our inventory. Could you please check the spelling or try a different name? ${
-          medicineMatch.alternatives && medicineMatch.alternatives.length > 0 
-            ? `Did you mean: ${medicineMatch.alternatives.join(', ')}?` 
-            : ''
-        }`,
-        requiresClarification: true
-      };
-    }
+        if (!matchedMedicine) {
+          errors.push(`❌ Medicine "${medicineRequest.name}" not found in our inventory`);
+          continue;
+        }
 
-    console.log(`✅ Medicine matched: ${medicineMatch.matched_medicine}`);
+        console.log(`✅ Medicine matched: ${matchedMedicine.medicine_name} (${matchedMedicine.generic_name})`);
 
-    // If quantity not specified, ask
-    if (!intent.quantity) {
-      // Try to get from history
-      const historyQuantity = await this.getTypicalQuantity(
-        consumerId,
-        medicineMatch.matched_medicine
-      );
-
-      if (historyQuantity) {
-        return {
-          message: `Would you like to order ${historyQuantity} ${medicineMatch.matched_medicine}, same as your usual order?`,
-          suggestedOrder: {
-            medicine: medicineMatch.matched_medicine,
-            quantity: historyQuantity
-          },
-          requiresConfirmation: true
+        // Run safety checks
+        const orderRequest = {
+          medicineId: matchedMedicine.id,
+          quantity: medicineRequest.quantity || 30,
+          dosageFrequency: medicineRequest.dosage_frequency || 'as prescribed'
         };
-      } else {
-        return {
-          message: `How many ${medicineMatch.matched_medicine} would you like to order?`,
-          requiresClarification: true,
-          partialOrder: {
-            medicine: medicineMatch.matched_medicine
-          }
-        };
+
+        console.log('🛡️  Running safety checks...');
+        const safetyResult = await this.safetyAgent.evaluateOrderSafety(
+          consumerId,
+          matchedMedicine,
+          orderRequest,
+          sessionId
+        );
+
+        if (safetyResult.decision === 'APPROVED') {
+          orderResults.push({
+            success: true,
+            medicine: matchedMedicine,
+            orderRequest: orderRequest,
+            safetyResult: safetyResult
+          });
+        } else {
+          errors.push(`❌ ${matchedMedicine.medicine_name}: ${safetyResult.reason}`);
+        }
+
+      } catch (error) {
+        console.error(`Error processing ${medicineRequest.name}:`, error);
+        errors.push(`❌ Error processing ${medicineRequest.name}`);
       }
     }
 
-    // Run safety check
-    console.log('🛡️  Running safety checks...');
-    const safetyCheck = await this.safetyAgent.evaluateOrderSafety(
-      {
-        medicine_name: medicineMatch.matched_medicine,
-        quantity: intent.quantity,
-        dosage_frequency: intent.dosage_frequency
-      },
-      sessionId,
-      consumerId
-    );
+    // If no medicines were approved, return errors
+    if (orderResults.length === 0) {
+      return {
+        message: errors.length > 0 
+          ? `I couldn't process your order:\n\n${errors.join('\n')}\n\nPlease let me know if you'd like to try something else.`
+          : "I couldn't find any of the requested medicines. Could you please specify which medications you need?",
+        requiresAction: false
+      };
+    }
 
-    tracer.logDecision(
-      'Safety Check Complete',
-      safetyCheck.decision,
-      safetyCheck
-    );
+    // Create single order with multiple items
+    console.log(`✅ ${orderResults.length} medicine(s) approved, creating order...`);
 
-    // Handle safety decision
-    if (safetyCheck.decision === 'APPROVED') {
-      // Create the order
-      console.log('✅ Order approved, creating...');
+    try {
+      const orderData = {
+        consumerId: consumerId,
+        totalAmount: orderResults.reduce((sum, result) => 
+          sum + (parseFloat(result.medicine.price) * result.orderRequest.quantity), 0
+        ),
+        items: orderResults.map(result => ({
+          medicineId: result.medicine.id,
+          quantity: result.orderRequest.quantity,
+          dosageFrequency: result.orderRequest.dosageFrequency,
+          unitPrice: parseFloat(result.medicine.price)
+        }))
+      };
+
+      const { order, orderItems } = await this.actionAgent.createOrder(orderData, sessionId);
+      await this.actionAgent.confirmOrderAndAutomate(order.id, sessionId);
+
+      // Build response message
+      let responseMessage = `✅ Order confirmed! Order #${order.id}\n\n`;
+      responseMessage += `📦 Items:\n`;
       
-      const orderResult = await this.createOrderFromIntent(
-        consumerId,
-        safetyCheck.medicineData,
-        intent,
-        sessionId,
-        tracer
-      );
+      orderResults.forEach((result, index) => {
+        responseMessage += `${index + 1}. ${result.medicine.medicine_name} - ${result.orderRequest.quantity} ${result.medicine.unit_type}\n`;
+      });
+      
+      responseMessage += `\n💰 Total: $${order.total_amount}\n\n`;
+      responseMessage += `Your order will be processed shortly. You'll receive a confirmation email.`;
+
+      // Add any warnings
+      if (errors.length > 0) {
+        responseMessage += `\n\n⚠️ Note: Some items couldn't be added:\n${errors.join('\n')}`;
+      }
 
       return {
-        message: `Perfect! I've placed your order for ${intent.quantity} ${medicineMatch.matched_medicine}. Your order number is #${orderResult.order.id}. You'll receive a confirmation shortly!`,
+        message: responseMessage,
+        requiresAction: false,
         orderCreated: true,
-        order: orderResult.order,
-        orderItems: orderResult.orderItems
+        orderId: order.id
       };
 
-    } else if (safetyCheck.decision === 'REQUIRES_ACTION') {
-      const reasons = safetyCheck.reasoning.join(' ');
-      const actions = safetyCheck.requiresAction.join(', ');
-      
+    } catch (error) {
+      console.error('Error creating order:', error);
       return {
-        message: `Before I can process your order: ${reasons} Please ${actions}.`,
-        requiresAction: safetyCheck.requiresAction,
-        reasoning: safetyCheck.reasoning
-      };
-
-    } else {
-      // REJECTED
-      const reasons = safetyCheck.reasoning.join(' ');
-      
-      return {
-        message: `I'm unable to process this order. ${reasons}`,
-        orderRejected: true,
-        reasoning: safetyCheck.reasoning
+        message: `I encountered an error while creating your order: ${error.message}. Please try again.`,
+        requiresAction: false
       };
     }
   }
@@ -301,10 +285,8 @@ if (medicineMatch.needs_clarification && medicineMatch.alternatives.length > 0) 
     };
   }
 
-
   /**
-   * 
-   * uheneric intent
+   * Handle generic intent
    */
   async handleGenericIntent(intent, userMessage, sessionId, tracer) {
     const response = await this.conversationAgent.generateResponse({
@@ -317,33 +299,6 @@ if (medicineMatch.needs_clarification && medicineMatch.alternatives.length > 0) 
       message: response
     };
   }
-
-  /**
-   * Create order from validated intent
-   */
-  async createOrderFromIntent(consumerId, medicineData, intent, sessionId, tracer) {
-    const orderData = {
-      consumerId,
-      totalAmount: medicineData.price * intent.quantity,
-      items: [{
-        medicineId: medicineData.id,
-        quantity: intent.quantity,
-        dosageFrequency: intent.dosage_frequency || 'as directed',
-        unitPrice: medicineData.price
-      }]
-    };
-
-    // Create order
-    const result = await this.actionAgent.createOrder(orderData, sessionId);
-
-    // Trigger automation
-    await this.actionAgent.confirmOrderAndAutomate(result.order.id, sessionId);
-
-    return result;
-  }
-
-
-
 
   /**
    * Get typical order quantity from history
@@ -366,8 +321,6 @@ if (medicineMatch.needs_clarification && medicineMatch.alternatives.length > 0) 
       return null;
     }
   }
-
-
 
   /**
    * Save conversation message

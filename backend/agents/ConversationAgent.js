@@ -1,8 +1,6 @@
-
 import { AgentTracer } from '../config/langfuse.js';
 import { query } from '../config/database.js';
 import { ChatGroq } from "@langchain/groq";
-
 
 /**
  * Conversation Agent - Front-Facing AI
@@ -10,112 +8,104 @@ import { ChatGroq } from "@langchain/groq";
  * Extracts intent and entities from natural language
  */
 export class ConversationAgent {
-constructor() {
-  this.model = new ChatGroq({
-    model: 'llama-3.3-70b-versatile',
-    temperature: 0.3,
-    apiKey: process.env.GROQ_API_KEY, // Free at console.groq.com
-  });
-}
-
+  constructor() {
+    this.model = new ChatGroq({
+      model: 'llama-3.3-70b-versatile',
+      temperature: 0.3,
+      apiKey: process.env.GROQ_API_KEY, // Free at console.groq.com
+    });
+  }
 
   /**
    * Extract structured intent from user message
    */
   async extractIntent(userMessage, conversationHistory = [], sessionId) {
-    const tracer = new AgentTracer(sessionId, 'conversation');
-    const trace = tracer.startTrace('extract_intent');
+    // Ensure conversationHistory is an array
+    if (!Array.isArray(conversationHistory)) {
+      conversationHistory = [];
+    }
 
-    const systemPrompt = `You are a helpful pharmacy assistant AI. Your job is to understand what customers want and extract key information.
-
-Extract from the user's message:
-1. Intent: order, refill, question, complaint, greeting, other
-2. Medicine names (allow fuzzy matching, common misspellings)
-3. Quantity (if mentioned)
-4. Dosage/frequency (if mentioned)
-5. Any concerns or questions
-
-Be conversational and friendly. If information is unclear, identify what clarification is needed.
-
-Return your analysis as JSON:
-{
-  "intent": "order|refill|question|complaint|greeting|other",
-  "medicines": [{"name": "medicine name", "confidence": 0.9}],
-  "quantity": number or null,
-  "dosage_frequency": "string or null",
-  "clarification_needed": ["list of questions to ask"],
-  "user_concern": "string or null",
-  "next_action": "what should happen next"
-}`;
-
-    const conversationContext = conversationHistory
-      .map(msg => `${msg.role}: ${msg.content}`)
+    const historyContext = conversationHistory
+      .slice(-5)
+      .map(m => `${m.role}: ${m.content}`)
       .join('\n');
 
-    const prompt = `Previous conversation:
-${conversationContext}
+    const systemPrompt = `You are a pharmacy AI assistant. Extract the user's intent from their message.
 
-Current user message: "${userMessage}"
+Context from previous messages:
+${historyContext}
 
-Analyze and extract intent:`;
+Analyze the message and return JSON with:
+{
+  "intent": "order" | "refill" | "question" | "complaint" | "greeting" | "clarification",
+  "medicines": [
+    {
+      "name": "medicine name",
+      "quantity": number (if specified),
+      "dosage_frequency": "how often" (if specified),
+      "confidence": 0.0-1.0
+    }
+  ],
+  "user_concern": "brief summary if complaint/question",
+  "clarification_needed": ["list of missing info"],
+  "next_action": "what to do next"
+}
+
+IMPORTANT: 
+- Extract ALL medicines mentioned in the message
+- If user says "and", "also", "plus", they want multiple medicines
+- Examples:
+  * "I need Aspirin and Paracetamol" → 2 medicines
+  * "Order Metformin 30 tablets and Amlodipine 60 tablets" → 2 medicines
+  * "Refill my BP meds and diabetes medication" → 2 medicines (but need clarification on names)
+- Default quantity is 30 if not specified`;
 
     try {
-      const generation = tracer.addGeneration(
-        'llm_intent_extraction',
-        { systemPrompt, prompt },
-        'gpt-4o'
-      );
-
       const response = await this.model.invoke([
         { role: 'system', content: systemPrompt },
-        { role: 'user', content: prompt }
+        { role: 'user', content: userMessage }
       ]);
 
-      const content = response.content;
-      generation.end({ output: content });
-
-      // Parse JSON response
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
-      let extracted = {};
+      let content = response.content.trim();
+      content = content.replace(/```json\n?/g, '').replace(/```\n?/g, '');
       
-      if (jsonMatch) {
-        extracted = JSON.parse(jsonMatch[0]);
-      } else {
-        // Fallback parsing
-        extracted = {
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        return {
           intent: 'question',
-          clarification_needed: ['Could you please clarify what you need?'],
-          next_action: 'ask_clarification'
+          medicines: [],
+          clarification_needed: [],
+          user_concern: userMessage,
+          next_action: 'respond conversationally'
         };
       }
 
-      tracer.logDecision(
-        `Intent: ${extracted.intent}`,
-        `Extracted from user message: ${userMessage}`,
-        { extracted }
-      );
+      const parsed = JSON.parse(jsonMatch[0]);
+      
+      // Ensure medicines is always an array
+      if (!Array.isArray(parsed.medicines)) {
+        parsed.medicines = [];
+      }
 
-      await tracer.end(extracted);
-      return extracted;
-
+      return parsed;
     } catch (error) {
-      console.error('Error in intent extraction:', error);
-      await tracer.end({ error: error.message }, { status: 'error' });
-      throw error;
+      console.error('Error extracting intent:', error);
+      return {
+        intent: 'question',
+        medicines: [],
+        clarification_needed: [],
+        user_concern: userMessage,
+        next_action: 'respond conversationally'
+      };
     }
   }
-
-
-
-
-
-
-
-
 
   /**
    * Fuzzy match medicine names from user input
    */
+/**
+ * Fuzzy match medicine names from user input
+ */
 async fuzzyMatchMedicine(medicineName, sessionId) {
   const tracer = new AgentTracer(sessionId, 'conversation');
   tracer.startTrace('fuzzy_match_medicine');
@@ -123,39 +113,45 @@ async fuzzyMatchMedicine(medicineName, sessionId) {
   try {
     // Get all medicines from database
     const result = await query(
-      'SELECT medicine_name, generic_name FROM medicines'
+      'SELECT * FROM medicines ORDER BY medicine_name'
     );
 
     const medicines = result.rows;
     
+    if (medicines.length === 0) {
+      console.log('No medicines in database');
+      await tracer.end({ matched: null });
+      return null;
+    }
+    
     // Use LLM to find best match
     const systemPrompt = `You are a medicine name matcher. Given a user's input and a list of available medicines, find the best match.
+
 Consider:
-- Common misspellings
+- User might say just the base name (e.g., "Paracetamol" when database has "Paracetamol 500mg")
+- Common misspellings (e.g., "Paracetemol" → "Paracetamol")
 - Generic vs brand names
 - Partial matches
 - Common abbreviations (e.g., "BP meds" = blood pressure medications)
 
-CRITICAL: Return ONLY valid JSON in this exact format with no other text:
+CRITICAL: Return ONLY valid JSON with the EXACT medicine_name from the list:
 {
-  "matched_medicine": "exact medicine name from list or null",
-  "confidence": 0.95,
-  "alternatives": ["other possible matches"]
+  "matched_medicine": "exact name from list",
+  "confidence": 0.95
 }
 
 If no match found:
 {
   "matched_medicine": null,
-  "confidence": 0,
-  "alternatives": []
+  "confidence": 0
 }`;
 
     const prompt = `User mentioned: "${medicineName}"
 
-Available medicines:
-${medicines.map(m => `- ${m.medicine_name} (${m.generic_name})`).join('\n')}
+Available medicines (select the EXACT name from this list):
+${medicines.slice(0, 50).map(m => `- ${m.medicine_name}`).join('\n')}
 
-Return ONLY the JSON object:`;
+Return ONLY the JSON object with the EXACT matched name:`;
 
     const response = await this.model.invoke([
       { role: 'system', content: systemPrompt },
@@ -168,65 +164,78 @@ Return ONLY the JSON object:`;
     // Remove markdown code blocks
     jsonText = jsonText.replace(/```json\n?/g, '').replace(/```\n?/g, '');
     
-    // Extract JSON from text (in case there's extra text)
-    const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
+    // Extract JSON from text
+    const jsonMatch = jsonText.match(/\{[\s\S]*?\}/);
     
     if (!jsonMatch) {
-      console.error('No JSON found in response:', response.content);
+      console.error('No JSON found in LLM response');
       throw new Error('Invalid response format from LLM');
     }
 
     const match = JSON.parse(jsonMatch[0]);
 
-    // Validate the response structure
-    if (typeof match.matched_medicine === 'undefined' || typeof match.confidence === 'undefined') {
-      console.error('Invalid match structure:', match);
-      throw new Error('LLM returned invalid JSON structure');
+    console.log('🔍 LLM Match Result:', match);
+
+    // If we found a match, get full medicine details from database
+    if (match.matched_medicine && match.confidence > 0.5) {
+      // Find the medicine in our list by exact name match
+      const foundMedicine = medicines.find(m => 
+        m.medicine_name.toLowerCase() === match.matched_medicine.toLowerCase()
+      );
+
+      if (foundMedicine) {
+        tracer.logDecision(
+          `Matched: ${foundMedicine.medicine_name}`,
+          `Confidence: ${match.confidence}`,
+          foundMedicine
+        );
+
+        await tracer.end(foundMedicine);
+        return foundMedicine;
+      } else {
+        console.log('LLM returned medicine not in database:', match.matched_medicine);
+      }
     }
 
-    tracer.logDecision(
-      `Matched: ${match.matched_medicine}`,
-      `Confidence: ${match.confidence}`,
-      match
+    // Fallback: Try direct database search with ILIKE
+    console.log('Trying fallback database search...');
+    const fallbackResult = await query(
+      'SELECT * FROM medicines WHERE medicine_name ILIKE $1 OR generic_name ILIKE $1 LIMIT 1',
+      [`%${medicineName}%`]
     );
+    
+    if (fallbackResult.rows.length > 0) {
+      console.log('✅ Fallback found:', fallbackResult.rows[0].medicine_name);
+      await tracer.end(fallbackResult.rows[0]);
+      return fallbackResult.rows[0];
+    }
 
-    await tracer.end(match);
-    return match;
+    console.log('❌ No match found for:', medicineName);
+    await tracer.end({ matched: null });
+    return null;
 
   } catch (error) {
     console.error('Error in fuzzy matching:', error);
-    console.error('Medicine name attempted:', medicineName);
-    
     await tracer.end({ error: error.message }, { status: 'error' });
     
-    // Fallback: Try exact match from database
-    const exactMatch = medicines.find(m => 
-      m.medicine_name.toLowerCase() === medicineName.toLowerCase() ||
-      m.generic_name.toLowerCase() === medicineName.toLowerCase()
-    );
-    
-    if (exactMatch) {
-      console.log('Falling back to exact match:', exactMatch.medicine_name);
-      return {
-        matched_medicine: exactMatch.medicine_name,
-        confidence: 1.0,
-        alternatives: []
-      };
+    // Final fallback: Direct database search
+    try {
+      const result = await query(
+        'SELECT * FROM medicines WHERE medicine_name ILIKE $1 OR generic_name ILIKE $1 LIMIT 1',
+        [`%${medicineName}%`]
+      );
+      
+      if (result.rows.length > 0) {
+        console.log('✅ Emergency fallback found:', result.rows[0].medicine_name);
+        return result.rows[0];
+      }
+    } catch (dbError) {
+      console.error('Database fallback error:', dbError);
     }
     
-    // No match at all - return null
-    return {
-      matched_medicine: null,
-      confidence: 0,
-      alternatives: []
-    };
+    return null;
   }
 }
-
-
-
-
-
 
   /**
    * Generate conversational response

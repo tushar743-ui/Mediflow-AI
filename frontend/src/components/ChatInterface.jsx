@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import VoiceInput from './VoiceInput';
+import PrescriptionUpload from './PrescriptionUpload';
 import './ChatInterface.css';
 
 function ChatInterface({ consumer, sessionId, apiBaseUrl }) {
@@ -131,6 +132,18 @@ function ChatInterface({ consumer, sessionId, apiBaseUrl }) {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
+  // Handle prescription upload
+  const handlePrescriptionExtracted = (medicines, patientInfo) => {
+    // Build message from extracted medicines
+    let message = 'I have a prescription with: ';
+    message += medicines.map(m => 
+      `${m.name}${m.dosage ? ' ' + m.dosage : ''}${m.quantity ? ' x ' + m.quantity : ''}`
+    ).join(', ');
+    
+    // Send to backend
+    sendMessage(message);
+  };
+
   return (
     <div className="chat-interface">
       {/* Proactive Alerts Banner */}
@@ -180,7 +193,7 @@ function ChatInterface({ consumer, sessionId, apiBaseUrl }) {
               <li>Check prescription requirements</li>
             </ul>
             <p className="voice-hint">
-              💡 Use the microphone button below to speak your request!
+              💡 Use the microphone or upload button below!
             </p>
           </div>
         )}
@@ -197,7 +210,7 @@ function ChatInterface({ consumer, sessionId, apiBaseUrl }) {
               <div className="message-text">{message.content}</div>
               {message.metadata?.orderCreated && (
                 <div className="order-confirmation">
-                  ✅ Order #{message.metadata.order.id} Created Successfully!
+                  ✅ Order #{message.metadata.orderId} Created Successfully!
                 </div>
               )}
               {message.metadata?.requiresClarification && (
@@ -230,17 +243,22 @@ function ChatInterface({ consumer, sessionId, apiBaseUrl }) {
 
       {/* Input Area */}
       <form className="message-input-container" onSubmit={handleSubmit}>
-        <VoiceInput onTranscript={handleVoiceInput} />
+        <PrescriptionUpload 
+          apiBaseUrl={apiBaseUrl}
+          onMedicinesExtracted={handlePrescriptionExtracted}
+        />
         
         <input
           ref={inputRef}
           type="text"
           className="message-input"
-          placeholder="Type your message or use voice..."
+          placeholder="Type your message or upload prescription..."
           value={inputMessage}
           onChange={(e) => setInputMessage(e.target.value)}
           disabled={loading}
         />
+        
+        <VoiceInput onTranscript={handleVoiceInput} />
         
         <button
           type="submit"

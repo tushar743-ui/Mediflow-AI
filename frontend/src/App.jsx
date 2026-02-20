@@ -467,6 +467,8 @@ import ChatInterface from './components/ChatInterface';
 import AdminDashboard from './components/AdminDashboard';
 import ConsumerSelector from './components/ConsumerSelector';
 import AdminLoginModal from './components/AdminLoginModal';
+import PrescriptionUpload from './components/PrescriptionUpload';
+
 import './App.css';
 
 const API_BASE_URL = '/api';
