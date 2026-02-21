@@ -523,11 +523,19 @@ app.use((err, req, res, next) => {
 });
 
 // ============================================================================
-// START SERVER
+// EXPORT FOR VERCEL (Must come before app.listen)
 // ============================================================================
 
-app.listen(PORT, () => {
-  console.log(`
+export default app;
+
+// ============================================================================
+// START SERVER (Only for local development, not on Vercel)
+// ============================================================================
+
+// Only start the server if NOT running on Vercel
+if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`
 ╔═══════════════════════════════════════════════════════════════╗
 ║                                                               ║
 ║     🏥 Agentic AI Pharmacy System - Backend Server           ║
@@ -549,7 +557,6 @@ app.listen(PORT, () => {
 ║     • POST /api/admin/run-predictions        🔒               ║
 ║                                                               ║
 ╚═══════════════════════════════════════════════════════════════╝
-  `);
-});
-
-export default app;
+    `);
+  });
+}
