@@ -1,5 +1,5 @@
 .env
-
+.env.example
 
 # Logs
 logs
@@ -38,3 +38,8 @@ node_modules
 # next.js build output
 .next
 
+node_modules/
+.env
+*.log
+.DS_Store
+.vercel
