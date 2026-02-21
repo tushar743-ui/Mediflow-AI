@@ -99,6 +99,14 @@ body {
   gap: 0.75rem;
   margin: 0;
 }
+.icon img{
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+
+}
 
 .app-title .icon {
   font-size: 2rem;
