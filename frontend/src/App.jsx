@@ -9,8 +9,7 @@ import PrescriptionUpload from './components/PrescriptionUpload';
 
 import './App.css';
 
-const API_BASE_URL = 'https://mediflow-ai-three.vercel.app/api';
-
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://mediflow-ai-three.vercel.app/api';
 function App() {
   const navigate = useNavigate();
   const location = useLocation();
