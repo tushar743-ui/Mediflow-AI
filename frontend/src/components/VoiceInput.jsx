@@ -106,7 +106,7 @@ function VoiceInput({ onTranscript }) {
           🎤
         </div>
       ) : (
-        '🎤'
+        <img src="/mic.png" />
       )}
     </button>
   );

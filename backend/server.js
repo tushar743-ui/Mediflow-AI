@@ -22,6 +22,11 @@
 // const __filename = fileURLToPath(import.meta.url);
 // const __dirname = path.dirname(__filename);
 
+// // Initialize prescription parser and uploads directory FIRST
+// const prescriptionParser = new PrescriptionParser();
+// const uploadsDir = path.join(__dirname, 'uploads');
+// fs.mkdir(uploadsDir, { recursive: true }).catch(console.error);
+
 // // Configure multer for file uploads
 // const storage = multer.diskStorage({
 //   destination: (req, file, cb) => {
@@ -50,49 +55,6 @@
 //     }
 //   }
 // });
-// /**
-//  * Upload and parse prescription
-//  */
-// app.post('/api/prescription/upload', upload.single('prescription'), async (req, res) => {
-//   try {
-//     if (!req.file) {
-//       return res.status(400).json({ error: 'No file uploaded' });
-//     }
-
-//     console.log('📤 Prescription uploaded:', req.file.originalname);
-
-//     // Parse the prescription
-//     const result = await prescriptionParser.parsePrescription(
-//       req.file.path,
-//       req.file.mimetype
-//     );
-
-//     // Clean up uploaded file
-//     await fs.unlink(req.file.path).catch(() => {});
-
-//     if (!result.success) {
-//       return res.status(400).json({ 
-//         error: 'Failed to parse prescription',
-//         details: result.error
-//       });
-//     }
-
-//     res.json({
-//       success: true,
-//       medicines: result.medicines,
-//       patientInfo: result.patientInfo,
-//       rawText: result.rawText
-//     });
-
-//   } catch (error) {
-//     console.error('Error handling prescription upload:', error);
-//     res.status(500).json({ error: error.message });
-//   }
-// });
-// // Initialize prescription parser
-// const prescriptionParser = new PrescriptionParser();
-// const uploadsDir = path.join(__dirname, 'uploads');
-// fs.mkdir(uploadsDir, { recursive: true }).catch(console.error);
 
 // // Middleware
 // app.use(cors());
@@ -138,6 +100,40 @@
 // // ============================================================================
 
 // /**
+//  * Root route - API welcome message
+//  */
+// app.get('/', (req, res) => {
+//   res.json({ 
+//     message: '🏥 Mediflow AI Pharmacy System API',
+//     status: 'active',
+//     version: '1.0.0',
+//     endpoints: {
+//       health: 'GET /api/health',
+//       conversation: {
+//         start: 'POST /api/conversation/start',
+//         message: 'POST /api/conversation/message',
+//         history: 'GET /api/conversation/:sessionId/history'
+//       },
+//       prescription: {
+//         upload: 'POST /api/prescription/upload'
+//       },
+//       public: {
+//         medicines: 'GET /api/medicines',
+//         orders: 'GET /api/orders',
+//         consumers: 'GET /api/consumers'
+//       },
+//       admin: {
+//         inventory: 'GET /api/admin/inventory 🔒',
+//         alerts: 'GET /api/admin/alerts 🔒',
+//         agentActions: 'GET /api/admin/agent-actions 🔒',
+//         predictions: 'POST /api/admin/run-predictions 🔒'
+//       }
+//     },
+//     note: 'Admin endpoints require x-admin-password header'
+//   });
+// });
+
+// /**
 //  * Health check
 //  */
 // app.get('/api/health', async (req, res) => {
@@ -154,6 +150,46 @@
 //       database: 'disconnected',
 //       error: error.message
 //     });
+//   }
+// });
+
+// /**
+//  * Upload and parse prescription
+//  */
+// app.post('/api/prescription/upload', upload.single('prescription'), async (req, res) => {
+//   try {
+//     if (!req.file) {
+//       return res.status(400).json({ error: 'No file uploaded' });
+//     }
+
+//     console.log('📤 Prescription uploaded:', req.file.originalname);
+
+//     // Parse the prescription
+//     const result = await prescriptionParser.parsePrescription(
+//       req.file.path,
+//       req.file.mimetype
+//     );
+
+//     // Clean up uploaded file
+//     await fs.unlink(req.file.path).catch(() => {});
+
+//     if (!result.success) {
+//       return res.status(400).json({ 
+//         error: 'Failed to parse prescription',
+//         details: result.error
+//       });
+//     }
+
+//     res.json({
+//       success: true,
+//       medicines: result.medicines,
+//       patientInfo: result.patientInfo,
+//       rawText: result.rawText
+//     });
+
+//   } catch (error) {
+//     console.error('Error handling prescription upload:', error);
+//     res.status(500).json({ error: error.message });
 //   }
 // });
 
@@ -533,7 +569,7 @@
 // // ============================================================================
 
 // // Only start the server if NOT running on Vercel
-// if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
+// if (!process.env.VERCEL) {
 //   app.listen(PORT, () => {
 //     console.log(`
 // ╔═══════════════════════════════════════════════════════════════╗
@@ -546,6 +582,7 @@
 // ║     Admin Password: ${process.env.ADMIN_SECRET ? '✅ SET' : '⚠️  Using default (admin123)'}                     ║
 // ║                                                               ║
 // ║     API Endpoints:                                            ║
+// ║     • GET  /                                                  ║
 // ║     • POST /api/conversation/start                            ║
 // ║     • POST /api/conversation/message                          ║
 // ║     • GET  /api/medicines                                     ║
@@ -560,6 +597,17 @@
 //     `);
 //   });
 // }
+
+
+
+
+
+
+
+
+
+
+
 
 
 import express from 'express';
@@ -785,21 +833,24 @@ app.post('/api/conversation/start', async (req, res) => {
  */
 app.post('/api/conversation/message', async (req, res) => {
   try {
-    const { sessionId, consumerId, message } = req.body;
+    const { sessionId, consumerId, message, customer_email } = req.body;
 
     if (!sessionId || !message) {
       return res.status(400).json({ error: 'sessionId and message are required' });
     }
 
+    console.log('📧 Received customer email:', customer_email);
+
     // Get conversation history
     const history = await orchestrator.getConversationHistory(sessionId);
 
-    // Process message through orchestrator
+    // Process message through orchestrator with customer email
     const response = await orchestrator.processUserMessage(
       message,
       sessionId,
       consumerId,
-      history
+      history,
+      customer_email  // Pass customer email to orchestrator
     );
 
     res.json(response);
@@ -860,6 +911,39 @@ app.get('/api/consumers', async (req, res) => {
     res.json(result.rows);
   } catch (error) {
     console.error('Error getting consumers:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * Create new consumer (for Clerk authentication)
+ */
+app.post('/api/consumers', async (req, res) => {
+  try {
+    const { name, email, phone } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+
+    // Check if consumer already exists with this email
+    const existing = await query('SELECT * FROM consumers WHERE email = $1', [email]);
+    if (existing.rows.length > 0) {
+      console.log('Consumer already exists:', email);
+      return res.json(existing.rows[0]);
+    }
+
+    // Create new consumer
+    const result = await query(`
+      INSERT INTO consumers (name, email, phone)
+      VALUES ($1, $2, $3)
+      RETURNING *
+    `, [name, email, phone]);
+
+    console.log('Created new consumer:', result.rows[0]);
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error creating consumer:', error);
     res.status(500).json({ error: error.message });
   }
 });

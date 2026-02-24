@@ -32,6 +32,16 @@
   font-size: 1.1rem;
 }
 
+
+.upload-icon img{
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+  cursor: pointer;
+  flex-shrink: 0;
+  display: block;
+}
+
 .upload-icon.spinning {
   animation: spin 0.5s linear infinite;
 }

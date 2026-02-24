@@ -20,6 +20,14 @@
   transform: scale(1.05);
 }
 
+.voice-input-btn img {
+  width: 20px;        
+  height: 20px;
+  object-fit: contain;
+  display: block;     
+  pointer-events: none; 
+}
+
 .voice-input-btn.listening {
   background: var(--danger-color);
   border-color: var(--danger-color);
