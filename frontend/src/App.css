@@ -26,7 +26,24 @@ body::before {
 }
 
 
+/* Payment page main styling */
+.app-main.payment-page-main {
+  padding: 0;
+  min-height: 100vh;
+}
 
+/* User info nav styling */
+.user-info-nav {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.user-email {
+  font-size: 14px;
+  color: #64748b;
+  font-weight: 500;
+}
 
 
 * {

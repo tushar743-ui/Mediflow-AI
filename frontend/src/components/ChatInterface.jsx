@@ -280,22 +280,30 @@
 
 
 
+
+
+
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import VoiceInput from './VoiceInput';
 import PrescriptionUpload from './PrescriptionUpload';
+import OrderReviewModal from './OrderReviewModal';
 import { useUser } from '@clerk/clerk-react'; 
+import { useNavigate } from 'react-router-dom';
 import './ChatInterface.css';
 
 function ChatInterface({ consumer, sessionId, apiBaseUrl, clerkUser }) {
   // Get Clerk user if not passed as prop
   const { user } = useUser();
   const currentUser = clerkUser || user;
+  const navigate = useNavigate();
 
   const [messages, setMessages] = useState([]);
   const [inputMessage, setInputMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [pendingAlerts, setPendingAlerts] = useState([]);
+  const [showOrderReview, setShowOrderReview] = useState(false);
+  const [currentOrderDetails, setCurrentOrderDetails] = useState(null);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -371,6 +379,15 @@ function ChatInterface({ consumer, sessionId, apiBaseUrl, clerkUser }) {
 
       setMessages(prev => [...prev, assistantMessage]);
 
+      // NEW: Check if order was created and needs payment
+      if (response.data.orderCreated && response.data.needsPayment) {
+        console.log('Order created, showing review modal:', response.data.orderDetails);
+        
+        // Show order review modal
+        setCurrentOrderDetails(response.data.orderDetails);
+        setShowOrderReview(true);
+      }
+
       // Refresh alerts if order was created
       if (response.data.orderCreated) {
         setTimeout(loadPendingAlerts, 1000);
@@ -437,8 +454,22 @@ function ChatInterface({ consumer, sessionId, apiBaseUrl, clerkUser }) {
     sendMessage(message);
   };
 
+  // NEW: Handle order review modal close
+  const handleCloseOrderReview = () => {
+    setShowOrderReview(false);
+    setCurrentOrderDetails(null);
+  };
+
   return (
     <div className="chat-interface">
+      {/* NEW: Order Review Modal */}
+      {showOrderReview && currentOrderDetails && (
+        <OrderReviewModal
+          orderDetails={currentOrderDetails}
+          onClose={handleCloseOrderReview}
+        />
+      )}
+
       {/* Proactive Alerts Banner */}
       {pendingAlerts.length > 0 && (
         <div className="alerts-banner">
@@ -501,9 +532,20 @@ function ChatInterface({ consumer, sessionId, apiBaseUrl, clerkUser }) {
             </div>
             <div className="message-content">
               <div className="message-text">{message.content}</div>
-              {message.metadata?.orderCreated && (
+              {message.metadata?.orderCreated && message.metadata?.needsPayment && (
+                <div className="order-confirmation payment-needed">
+                  💳 Order #{message.metadata.orderId} - Proceed to Payment
+                  <button 
+                    className="view-order-btn"
+                    onClick={() => navigate(`/payment/${message.metadata.orderId}`)}
+                  >
+                    Review & Pay
+                  </button>
+                </div>
+              )}
+              {message.metadata?.orderCreated && !message.metadata?.needsPayment && (
                 <div className="order-confirmation">
-                  ✅ Order #{message.metadata.orderId} Created Successfully!
+                  ✅ Order #{message.metadata.orderId} Confirmed!
                 </div>
               )}
               {message.metadata?.requiresClarification && (
@@ -558,7 +600,7 @@ function ChatInterface({ consumer, sessionId, apiBaseUrl, clerkUser }) {
           className="send-btn"
           disabled={loading || !inputMessage.trim()}
         >
-          {loading ? '⏳' : (<img src="/search.png" className='Sbtn'/>)}
+          {loading ? '⏳' : (<img src="/search.png" className='Sbtn' alt="Send"/>)}
         </button>
       </form>
     </div>
@@ -566,3 +608,21 @@ function ChatInterface({ consumer, sessionId, apiBaseUrl, clerkUser }) {
 }
 
 export default ChatInterface;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

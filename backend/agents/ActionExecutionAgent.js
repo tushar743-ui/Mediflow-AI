@@ -12,11 +12,11 @@ export class ActionExecutionAgent {
     this.webhookUrl = process.env.FULFILLMENT_WEBHOOK_URL;
     this.notificationUrl = process.env.NOTIFICATION_WEBHOOK_URL;
     // DEBUG LOGS
-  console.log('🔧 ActionExecutionAgent initialized');
-  console.log('📦 Fulfillment webhook URL:', this.webhookUrl);
-  console.log('📧 Notification webhook URL:', this.notificationUrl);
-  console.log('📦 Is fulfillment URL set?', !!this.webhookUrl);
-  console.log('📧 Is notification URL set?', !!this.notificationUrl);
+    console.log('🔧 ActionExecutionAgent initialized');
+    console.log('📦 Fulfillment webhook URL:', this.webhookUrl);
+    console.log('📧 Notification webhook URL:', this.notificationUrl);
+    console.log('📦 Is fulfillment URL set?', !!this.webhookUrl);
+    console.log('📧 Is notification URL set?', !!this.notificationUrl);
   }
   
 
@@ -30,15 +30,16 @@ export class ActionExecutionAgent {
     const client = await query('BEGIN');
 
     try {
-      // Create order record
+      // Create order record with payment status
       const orderResult = await query(`
         INSERT INTO orders 
-        (consumer_id, status, total_amount, prescription_url)
-        VALUES ($1, $2, $3, $4)
+        (consumer_id, status, payment_status, total_amount, prescription_url)
+        VALUES ($1, $2, $3, $4, $5)
         RETURNING *
       `, [
         orderData.consumerId,
-        'pending',
+        orderData.status || 'pending_payment',  // NEW: Default to pending_payment
+        'pending',  // NEW: Payment status
         orderData.totalAmount || 0,
         orderData.prescriptionUrl || null
       ]);
@@ -48,7 +49,7 @@ export class ActionExecutionAgent {
       tracer.logToolCall(
         'database_insert',
         { table: 'orders', consumerId: orderData.consumerId },
-        { orderId: order.id }
+        { orderId: order.id, status: order.status, paymentStatus: order.payment_status }
       );
 
       // Create order items
@@ -78,7 +79,7 @@ export class ActionExecutionAgent {
 
       tracer.logDecision(
         'Order Created',
-        `Order #${order.id} with ${orderItems.length} items`,
+        `Order #${order.id} with ${orderItems.length} items (${order.status})`,
         { order, orderItems }
       );
 
@@ -186,9 +187,10 @@ export class ActionExecutionAgent {
    * Trigger fulfillment webhook
    */
   async triggerFulfillmentWebhook(order, orderItems, sessionId) {
-     console.log('🔍 DEBUG: triggerFulfillmentWebhook called');
-  console.log('🔍 DEBUG: this.webhookUrl =', this.webhookUrl);
-  console.log('🔍 DEBUG: Checking condition:', this.webhookUrl && this.webhookUrl !== 'https://webhook.site/your-unique-url');
+    console.log('🔍 DEBUG: triggerFulfillmentWebhook called');
+    console.log('🔍 DEBUG: this.webhookUrl =', this.webhookUrl);
+    console.log('🔍 DEBUG: Checking condition:', this.webhookUrl && this.webhookUrl !== 'https://webhook.site/your-unique-url');
+    
     const tracer = new AgentTracer(sessionId, 'action_execution');
     tracer.startTrace('trigger_fulfillment_webhook');
 
@@ -200,6 +202,7 @@ export class ActionExecutionAgent {
           id: order.id,
           consumerId: order.consumer_id,
           status: order.status,
+          paymentStatus: order.payment_status,  // NEW: Include payment status
           totalAmount: order.total_amount,
           orderDate: order.order_date
         },
@@ -266,32 +269,32 @@ export class ActionExecutionAgent {
   /**
    * Send order confirmation (Email/WhatsApp)
    */
-async sendOrderConfirmation(order, consumer, orderItems, sessionId) {
-  const tracer = new AgentTracer(sessionId, 'action_execution');
-  tracer.startTrace('send_order_confirmation');
+  async sendOrderConfirmation(order, consumer, orderItems, sessionId) {
+    const tracer = new AgentTracer(sessionId, 'action_execution');
+    tracer.startTrace('send_order_confirmation');
 
-  try {
-    // Get medicine names for items
-    const medicineIds = orderItems.map(item => item.medicine_id);
-    const medicinesResult = await query(`
-      SELECT id, medicine_name FROM medicines WHERE id = ANY($1)
-    `, [medicineIds]);
+    try {
+      // Get medicine names for items
+      const medicineIds = orderItems.map(item => item.medicine_id);
+      const medicinesResult = await query(`
+        SELECT id, medicine_name FROM medicines WHERE id = ANY($1)
+      `, [medicineIds]);
 
-    const medicineMap = {};
-    medicinesResult.rows.forEach(m => {
-      medicineMap[m.id] = m.medicine_name;
-    });
+      const medicineMap = {};
+      medicinesResult.rows.forEach(m => {
+        medicineMap[m.id] = m.medicine_name;
+      });
 
-    const itemsList = orderItems.map(item => 
-      `- ${medicineMap[item.medicine_id]} x ${item.quantity}`
-    ).join('\n');
+      const itemsList = orderItems.map(item => 
+        `- ${medicineMap[item.medicine_id]} x ${item.quantity}`
+      ).join('\n');
 
-    const message = `
+      const message = `
 Order Confirmation - MediFlow AI
 
 Dear ${consumer.name},
 
-Your order #${order.id} has been confirmed!
+Your order #${order.id} has been confirmed and paid!
 
 Items:
 ${itemsList}
@@ -301,79 +304,118 @@ Total: $${order.total_amount}
 Your order will be processed shortly. You'll receive a notification when it's ready for pickup/delivery.
 
 Thank you for choosing our pharmacy!
-    `.trim();
+      `.trim();
 
-    // ✅ ENHANCED: Send notification webhook to Zapier with detailed logging
-    if (process.env.NOTIFICATION_WEBHOOK_URL && 
-        process.env.NOTIFICATION_WEBHOOK_URL !== 'https://api.example.com/notifications') {
-      
-      // Build complete items array (not just first item)
-      const allItems = orderItems.map(item => ({
-        medicine_name: medicineMap[item.medicine_id],
-        quantity: item.quantity,
-        dosage_frequency: item.dosage_frequency,
-        unit_price: item.unit_price,
-        subtotal: item.subtotal
-      }));
+      // Send notification webhook to Zapier with detailed logging
+      if (process.env.NOTIFICATION_WEBHOOK_URL && 
+          process.env.NOTIFICATION_WEBHOOK_URL !== 'https://api.example.com/notifications') {
+        
+        // Build complete items array
+        const allItems = orderItems.map(item => ({
+          medicine_name: medicineMap[item.medicine_id],
+          quantity: item.quantity,
+          dosage_frequency: item.dosage_frequency,
+          unit_price: item.unit_price,
+          subtotal: item.subtotal
+        }));
 
-      const notificationPayload = {
-        event: 'order.confirmation',
-        timestamp: new Date().toISOString(),
-        order_id: order.id,
-        customer_name: consumer.name,
-        customer_email: consumer.email || 'no-email@example.com',
-        customer_phone: consumer.phone || '',
-        // ✅ FIXED: Send all items, not just first one
-        medicine: medicineMap[orderItems[0].medicine_id], // Primary item for Zapier
-        quantity: orderItems[0].quantity,
-        total_amount: order.total_amount,
-        status: 'confirmed',
-        items: itemsList, // Human-readable list
-        items_array: allItems, // Structured array for advanced Zaps
-        order_date: order.order_date || new Date().toISOString()
-      };
+        const notificationPayload = {
+          event: 'order.confirmation',
+          timestamp: new Date().toISOString(),
+          order_id: order.id,
+          customer_name: consumer.name,
+          customer_email: consumer.email || 'no-email@example.com',
+          customer_phone: consumer.phone || '',
+          medicine: medicineMap[orderItems[0].medicine_id],
+          quantity: orderItems[0].quantity,
+          total_amount: order.total_amount,
+          status: 'confirmed',
+          payment_status: order.payment_status || 'paid',  // NEW: Include payment status
+          items: itemsList,
+          items_array: allItems,
+          order_date: order.order_date || new Date().toISOString()
+        };
 
-      try {
-        console.log('\n════════════════════════════════════════════════════════');
-        console.log('📧 SENDING NOTIFICATION WEBHOOK TO ZAPIER');
-        console.log('════════════════════════════════════════════════════════');
-        console.log('🔗 Webhook URL:', process.env.NOTIFICATION_WEBHOOK_URL);
-        console.log('📦 Payload:', JSON.stringify(notificationPayload, null, 2));
-        console.log('════════════════════════════════════════════════════════\n');
+        try {
+          console.log('\n════════════════════════════════════════════════════════');
+          console.log('📧 SENDING NOTIFICATION WEBHOOK TO ZAPIER');
+          console.log('════════════════════════════════════════════════════════');
+          console.log('🔗 Webhook URL:', process.env.NOTIFICATION_WEBHOOK_URL);
+          console.log('📦 Payload:', JSON.stringify(notificationPayload, null, 2));
+          console.log('════════════════════════════════════════════════════════\n');
 
-        const response = await axios.post(
-          process.env.NOTIFICATION_WEBHOOK_URL, 
-          notificationPayload,
-          {
-            headers: { 
-              'Content-Type': 'application/json',
-              'User-Agent': 'MediFlow-AI/1.0'
-            },
-            timeout: 10000, // Increased timeout to 10s
-            validateStatus: (status) => status < 500 // Accept 4xx as non-error
+          const response = await axios.post(
+            process.env.NOTIFICATION_WEBHOOK_URL, 
+            notificationPayload,
+            {
+              headers: { 
+                'Content-Type': 'application/json',
+                'User-Agent': 'MediFlow-AI/1.0'
+              },
+              timeout: 10000,
+              validateStatus: (status) => status < 500
+            }
+          );
+
+          console.log('\n════════════════════════════════════════════════════════');
+          console.log('✅ ZAPIER WEBHOOK RESPONSE');
+          console.log('════════════════════════════════════════════════════════');
+          console.log('📊 Status Code:', response.status);
+          console.log('📊 Status Text:', response.statusText);
+          console.log('📄 Response Headers:', JSON.stringify(response.headers, null, 2));
+          console.log('📄 Response Body:', JSON.stringify(response.data, null, 2));
+          console.log('════════════════════════════════════════════════════════\n');
+
+          if (response.status === 200 || response.status === 201) {
+            if (response.data && response.data.status === 'error') {
+              console.error('⚠️  Zapier returned error in response body:', response.data);
+              throw new Error(`Zapier error: ${response.data.message || 'Unknown error'}`);
+            }
+
+            console.log('✅ Notification webhook sent successfully!');
+            
+            tracer.logToolCall(
+              'send_notification',
+              { 
+                channel: 'zapier_webhook', 
+                recipient: consumer.email,
+                orderId: order.id 
+              },
+              { 
+                success: true, 
+                status: response.status,
+                zapierResponse: response.data 
+              }
+            );
+          } else {
+            console.error(`⚠️  Unexpected status code: ${response.status}`);
+            throw new Error(`Zapier returned status ${response.status}: ${response.statusText}`);
           }
-        );
 
-        // ✅ ENHANCED: Log full response details
-        console.log('\n════════════════════════════════════════════════════════');
-        console.log('✅ ZAPIER WEBHOOK RESPONSE');
-        console.log('════════════════════════════════════════════════════════');
-        console.log('📊 Status Code:', response.status);
-        console.log('📊 Status Text:', response.statusText);
-        console.log('📄 Response Headers:', JSON.stringify(response.headers, null, 2));
-        console.log('📄 Response Body:', JSON.stringify(response.data, null, 2));
-        console.log('════════════════════════════════════════════════════════\n');
-
-        // ✅ Check for Zapier-specific errors
-        if (response.status === 200 || response.status === 201) {
-          // Check if Zapier returned an error in the body
-          if (response.data && response.data.status === 'error') {
-            console.error('⚠️  Zapier returned error in response body:', response.data);
-            throw new Error(`Zapier error: ${response.data.message || 'Unknown error'}`);
-          }
-
-          console.log('✅ Notification webhook sent successfully!');
+        } catch (error) {
+          console.log('\n════════════════════════════════════════════════════════');
+          console.log('❌ NOTIFICATION WEBHOOK FAILED');
+          console.log('════════════════════════════════════════════════════════');
           
+          if (error.response) {
+            console.error('📊 Error Status:', error.response.status);
+            console.error('📊 Error Status Text:', error.response.statusText);
+            console.error('📄 Error Response:', JSON.stringify(error.response.data, null, 2));
+            console.error('📄 Error Headers:', JSON.stringify(error.response.headers, null, 2));
+          } else if (error.request) {
+            console.error('📡 No response received from Zapier');
+            console.error('🔍 Request details:', error.request);
+            console.error('💡 Possible causes:');
+            console.error('   - Zapier webhook URL is incorrect');
+            console.error('   - Network connectivity issues');
+            console.error('   - Zapier service is down');
+          } else {
+            console.error('⚙️  Error Message:', error.message);
+            console.error('🔍 Error Stack:', error.stack);
+          }
+          
+          console.log('════════════════════════════════════════════════════════\n');
+
           tracer.logToolCall(
             'send_notification',
             { 
@@ -382,102 +424,56 @@ Thank you for choosing our pharmacy!
               orderId: order.id 
             },
             { 
-              success: true, 
-              status: response.status,
-              zapierResponse: response.data 
+              success: false, 
+              error: error.message,
+              errorDetails: error.response ? {
+                status: error.response.status,
+                data: error.response.data
+              } : null
             }
           );
-        } else {
-          // Non-200 response
-          console.error(`⚠️  Unexpected status code: ${response.status}`);
-          throw new Error(`Zapier returned status ${response.status}: ${response.statusText}`);
+
+          console.error('⚠️  Order created successfully but notification failed');
         }
-
-      } catch (error) {
-        console.log('\n════════════════════════════════════════════════════════');
-        console.log('❌ NOTIFICATION WEBHOOK FAILED');
-        console.log('════════════════════════════════════════════════════════');
-        
-        if (error.response) {
-          // Zapier responded with error
-          console.error('📊 Error Status:', error.response.status);
-          console.error('📊 Error Status Text:', error.response.statusText);
-          console.error('📄 Error Response:', JSON.stringify(error.response.data, null, 2));
-          console.error('📄 Error Headers:', JSON.stringify(error.response.headers, null, 2));
-        } else if (error.request) {
-          // Request made but no response
-          console.error('📡 No response received from Zapier');
-          console.error('🔍 Request details:', error.request);
-          console.error('💡 Possible causes:');
-          console.error('   - Zapier webhook URL is incorrect');
-          console.error('   - Network connectivity issues');
-          console.error('   - Zapier service is down');
-        } else {
-          // Error in request setup
-          console.error('⚙️  Error Message:', error.message);
-          console.error('🔍 Error Stack:', error.stack);
-        }
-        
-        console.log('════════════════════════════════════════════════════════\n');
-
-        // Log to tracer
-        tracer.logToolCall(
-          'send_notification',
-          { 
-            channel: 'zapier_webhook', 
-            recipient: consumer.email,
-            orderId: order.id 
-          },
-          { 
-            success: false, 
-            error: error.message,
-            errorDetails: error.response ? {
-              status: error.response.status,
-              data: error.response.data
-            } : null
-          }
-        );
-
-        // Don't throw - log error but continue
-        console.error('⚠️  Order created successfully but notification failed');
+      } else {
+        console.log('⚠️  NOTIFICATION_WEBHOOK_URL not configured or is placeholder');
+        console.log('📝 Current value:', process.env.NOTIFICATION_WEBHOOK_URL);
       }
-    } else {
-      console.log('⚠️  NOTIFICATION_WEBHOOK_URL not configured or is placeholder');
-      console.log('📝 Current value:', process.env.NOTIFICATION_WEBHOOK_URL);
+
+      // For development, log to console
+      console.log('\n📧 ORDER CONFIRMATION EMAIL (MOCK):');
+      console.log('To:', consumer.email);
+      console.log('Subject: Order Confirmation #' + order.id);
+      console.log(message);
+
+      // Mock WhatsApp notification
+      if (consumer.phone) {
+        console.log('\n📱 WHATSAPP MESSAGE (MOCK):');
+        console.log('To:', consumer.phone);
+        console.log(`Hi ${consumer.name}! Your pharmacy order #${order.id} is confirmed. Total: $${order.total_amount}`);
+      }
+
+      await tracer.end({ success: true, messagesSent: 1 });
+      return { success: true };
+
+    } catch (error) {
+      console.error('❌ Error in sendOrderConfirmation:', error);
+      await tracer.end({ error: error.message }, { status: 'error' });
+      return { success: false, error: error.message };
     }
-
-    // For development, log to console
-    console.log('\n📧 ORDER CONFIRMATION EMAIL (MOCK):');
-    console.log('To:', consumer.email);
-    console.log('Subject: Order Confirmation #' + order.id);
-    console.log(message);
-
-    // Mock WhatsApp notification
-    if (consumer.phone) {
-      console.log('\n📱 WHATSAPP MESSAGE (MOCK):');
-      console.log('To:', consumer.phone);
-      console.log(`Hi ${consumer.name}! Your pharmacy order #${order.id} is confirmed. Total: $${order.total_amount}`);
-    }
-
-    await tracer.end({ success: true, messagesSent: 1 });
-    return { success: true };
-
-  } catch (error) {
-    console.error('❌ Error in sendOrderConfirmation:', error);
-    await tracer.end({ error: error.message }, { status: 'error' });
-    return { success: false, error: error.message };
   }
-}
-
 
   /**
    * Confirm order and trigger all automation
+   * Called AFTER payment succeeds
    */
   async confirmOrderAndAutomate(orderId, sessionId) {
     const tracer = new AgentTracer(sessionId, 'action_execution');
     tracer.startTrace('confirm_order_full_automation');
 
     try {
+      console.log(`\n💳 CONFIRMING ORDER #${orderId} AFTER PAYMENT\n`);
+
       // Get order details
       const orderResult = await query(`
         SELECT o.*, c.name, c.email, c.phone
@@ -499,7 +495,7 @@ Thank you for choosing our pharmacy!
 
       const orderItems = itemsResult.rows;
 
-      // Update order status
+      // Update order status to confirmed (payment already updated by webhook)
       await query(`
         UPDATE orders 
         SET status = 'confirmed', updated_at = NOW()
@@ -507,15 +503,17 @@ Thank you for choosing our pharmacy!
       `, [orderId]);
 
       tracer.logDecision(
-        'Order Confirmed',
-        `Order #${orderId} status updated to confirmed`,
-        { orderId }
+        'Order Confirmed After Payment',
+        `Order #${orderId} payment verified, status updated to confirmed`,
+        { orderId, paymentStatus: order.payment_status }
       );
 
       // Trigger fulfillment webhook
+      console.log('📦 Triggering fulfillment webhook...');
       await this.triggerFulfillmentWebhook(order, orderItems, sessionId);
 
       // Send confirmation to consumer
+      console.log('📧 Sending order confirmation...');
       await this.sendOrderConfirmation(
         order, 
         { name: order.name, email: order.email, phone: order.phone },
@@ -527,14 +525,17 @@ Thank you for choosing our pharmacy!
         success: true,
         orderId: order.id,
         status: 'confirmed',
+        paymentStatus: 'paid',
         automationCompleted: true
       };
+
+      console.log('✅ Order automation completed successfully\n');
 
       await tracer.end(result);
       return result;
 
     } catch (error) {
-      console.error('Error in order automation:', error);
+      console.error('❌ Error in order automation:', error);
       await tracer.end({ error: error.message }, { status: 'error' });
       throw error;
     }

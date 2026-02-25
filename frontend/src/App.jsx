@@ -573,6 +573,9 @@ import AdminDashboard from './components/AdminDashboard';
 import ConsumerSelector from './components/ConsumerSelector';
 import AdminLoginModal from './components/AdminLoginModal';
 import GetStarted from './components/GetStarted';
+import PaymentPage from './components/PaymentPage';
+import PaymentSuccess from './components/PaymentSuccess';
+import PaymentCancelled from './components/PaymentCancelled';
 import { useClerk, UserButton, useUser } from '@clerk/clerk-react';
 import './App.css';
 
@@ -742,6 +745,9 @@ function App() {
 
   const currentPath = location.pathname;
 
+  // Check if we're on a payment-related page
+  const isPaymentPage = currentPath.startsWith('/payment');
+
   return (
     <div className="app">
       {/* Admin Login Modal */}
@@ -752,75 +758,78 @@ function App() {
         />
       )}
 
-      <header className="app-header">
-        <div className="header-content">
-          <div className="header-left">
-            <h1 className="app-title">
-              <span className="icon"><img src="/qw.png" alt="Mediflow AI" /></span>
-              Mediflow AI
-            </h1>
-            <p className="app-subtitle">
-              Autonomous Intelligent Pharmacy System
-            </p>
-          </div>
+      {/* Header - Hide on payment pages for cleaner look */}
+      {!isPaymentPage && (
+        <header className="app-header">
+          <div className="header-content">
+            <div className="header-left">
+              <h1 className="app-title">
+                <span className="icon"><img src="/qw.png" alt="Mediflow AI" /></span>
+                Mediflow AI
+              </h1>
+              <p className="app-subtitle">
+                Autonomous Intelligent Pharmacy System
+              </p>
+            </div>
 
-          <nav className="header-nav">
-            {/* User info with Clerk UserButton */}
-            {isSignedIn && (
-              <div className="user-info-nav">
-                <span className="user-email">{user?.primaryEmailAddress?.emailAddress}</span>
-                <UserButton afterSignOutUrl="/" />
+            <nav className="header-nav">
+              {/* User info with Clerk UserButton */}
+              {isSignedIn && (
+                <div className="user-info-nav">
+                  <span className="user-email">{user?.primaryEmailAddress?.emailAddress}</span>
+                  <UserButton afterSignOutUrl="/" />
+                </div>
+              )}
+
+              {/* Sign Out Button */}
+              <button 
+                className="nav-btn sign-out-btn" 
+                onClick={() => signOut({ redirectUrl: "/" })}
+              >
+                Sign Out
+              </button>
+
+              {/* Chat Button */}
+              <button
+                className={`nav-btn ${currentPath === '/app' || currentPath === '/chat' ? 'active' : ''}`}
+                onClick={() => navigate('/app')}
+              >
+                Chat
+              </button>
+
+              {/* Admin Button */}
+              <button
+                className={`nav-btn ${currentPath === '/admin' ? 'active' : ''}`}
+                onClick={handleAdminClick}
+              >
+                Admin {adminUnlocked ? '🔓' : '🔒'}
+              </button>
+
+              {/* Lock Admin Button */}
+              {adminUnlocked && currentPath === '/admin' && (
+                <button
+                  className="nav-btn lock-btn"
+                  onClick={handleLockAdmin}
+                  title="Lock Admin Panel"
+                >
+                  🔒 Lock
+                </button>
+              )}
+            </nav>
+
+            {selectedConsumer && (currentPath === '/app' || currentPath === '/chat') && (
+              <div className="user-info">
+                <span className="user-name">{selectedConsumer.name}</span>
+                <button className="logout-btn" onClick={handleLogout}>
+                  Change Consumer
+                </button>
               </div>
             )}
+          </div>
+        </header>
+      )}
 
-            {/* Sign Out Button */}
-            <button 
-              className="nav-btn sign-out-btn" 
-              onClick={() => signOut({ redirectUrl: "/" })}
-            >
-              Sign Out
-            </button>
-
-            {/* Chat Button */}
-            <button
-              className={`nav-btn ${currentPath === '/app' || currentPath === '/chat' ? 'active' : ''}`}
-              onClick={() => navigate('/app')}
-            >
-              Chat
-            </button>
-
-            {/* Admin Button */}
-            <button
-              className={`nav-btn ${currentPath === '/admin' ? 'active' : ''}`}
-              onClick={handleAdminClick}
-            >
-              Admin {adminUnlocked ? '🔓' : '🔒'}
-            </button>
-
-            {/* Lock Admin Button */}
-            {adminUnlocked && currentPath === '/admin' && (
-              <button
-                className="nav-btn lock-btn"
-                onClick={handleLockAdmin}
-                title="Lock Admin Panel"
-              >
-                🔒 Lock
-              </button>
-            )}
-          </nav>
-
-          {selectedConsumer && (currentPath === '/app' || currentPath === '/chat') && (
-            <div className="user-info">
-              <span className="user-name">{selectedConsumer.name}</span>
-              <button className="logout-btn" onClick={handleLogout}>
-                Change Consumer
-              </button>
-            </div>
-          )}
-        </div>
-      </header>
-
-      <main className="app-main">
+      <main className={`app-main ${isPaymentPage ? 'payment-page-main' : ''}`}>
         <Routes>
           <Route
             path="/app"
@@ -859,16 +868,52 @@ function App() {
             path="/admin"
             element={<AdminDashboard apiBaseUrl={API_BASE_URL} />}
           />
+
+          {/* NEW: Payment Routes */}
+          <Route
+            path="/payment/:orderId"
+            element={<PaymentPage />}
+          />
+
+          <Route
+            path="/payment/success/:orderId"
+            element={<PaymentSuccess />}
+          />
+
+          <Route
+            path="/payment/cancelled"
+            element={<PaymentCancelled />}
+          />
         </Routes>
       </main>
 
-      <footer className="app-footer">
-        <p>
-          Agentic AI Pharmacy System • Multi-Agent Architecture • Production Ready
-        </p>
-      </footer>
+      {/* Footer - Hide on payment pages */}
+      {!isPaymentPage && (
+        <footer className="app-footer">
+          <p>
+            Agentic AI Pharmacy System • Multi-Agent Architecture • Production Ready
+          </p>
+        </footer>
+      )}
     </div>
   );
 }
 
 export default App;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

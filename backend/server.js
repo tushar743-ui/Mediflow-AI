@@ -620,6 +620,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { PrescriptionParser } from './services/PrescriptionParser.js';
 import fs from 'fs/promises';
+import Stripe from 'stripe';
 // Import database
 import pool, { query } from './config/database.js';
 
@@ -633,6 +634,9 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Initialize Stripe
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 // Initialize prescription parser and uploads directory FIRST
 const prescriptionParser = new PrescriptionParser();
@@ -733,6 +737,12 @@ app.get('/', (req, res) => {
         medicines: 'GET /api/medicines',
         orders: 'GET /api/orders',
         consumers: 'GET /api/consumers'
+      },
+      payment: {
+        createIntent: 'POST /api/stripe/create-payment-intent',
+        webhook: 'POST /api/stripe/webhook',
+        cancelOrder: 'POST /api/orders/:orderId/cancel',
+        confirmOrder: 'PUT /api/orders/:orderId/confirm'
       },
       admin: {
         inventory: 'GET /api/admin/inventory 🔒',
@@ -1042,7 +1052,7 @@ app.get('/api/orders/:orderId', async (req, res) => {
     const { orderId } = req.params;
     
     const orderResult = await query(`
-      SELECT o.*, c.name as consumer_name, c.email, c.phone
+      SELECT o.*, c.name as consumer_name, c.email as consumer_email, c.phone
       FROM orders o
       JOIN consumers c ON o.consumer_id = c.id
       WHERE o.id = $1
@@ -1055,7 +1065,7 @@ app.get('/api/orders/:orderId', async (req, res) => {
     const order = orderResult.rows[0];
 
     const itemsResult = await query(`
-      SELECT oi.*, m.medicine_name, m.unit_type
+      SELECT oi.*, m.medicine_name, m.generic_name, m.unit_type
       FROM order_items oi
       JOIN medicines m ON oi.medicine_id = m.id
       WHERE oi.order_id = $1
@@ -1066,6 +1076,165 @@ app.get('/api/orders/:orderId', async (req, res) => {
     res.json(order);
   } catch (error) {
     console.error('Error getting order:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================================================
+// STRIPE PAYMENT ENDPOINTS
+// ============================================================================
+
+/**
+ * Create Stripe Payment Intent
+ */
+app.post('/api/stripe/create-payment-intent', async (req, res) => {
+  try {
+    const { orderId, amount } = req.body;
+
+    if (!orderId || !amount) {
+      return res.status(400).json({ error: 'orderId and amount are required' });
+    }
+
+    console.log(`💳 Creating payment intent for order ${orderId}, amount: $${amount / 100}`);
+
+    // Create payment intent
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: amount, // Amount in cents
+      currency: 'usd',
+      metadata: {
+        orderId: orderId.toString(),
+      },
+      automatic_payment_methods: {
+        enabled: true,
+      },
+    });
+
+    // Update order with payment intent ID
+    await query(`
+      UPDATE orders 
+      SET stripe_payment_intent_id = $1
+      WHERE id = $2
+    `, [paymentIntent.id, orderId]);
+
+    console.log(`✅ Payment intent created: ${paymentIntent.id}`);
+
+    res.json({
+      clientSecret: paymentIntent.client_secret,
+      paymentIntentId: paymentIntent.id,
+    });
+
+  } catch (error) {
+    console.error('Error creating payment intent:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * Stripe Webhook Handler
+ */
+app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+  const sig = req.headers['stripe-signature'];
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+  let event;
+
+  try {
+    // Verify webhook signature (only if webhook secret is configured)
+    if (webhookSecret) {
+      event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
+    } else {
+      // For testing without webhook secret
+      event = JSON.parse(req.body.toString());
+      console.log('⚠️ Webhook secret not configured, skipping signature verification');
+    }
+  } catch (err) {
+    console.error('⚠️ Webhook signature verification failed:', err.message);
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+
+  console.log(`🎣 Received webhook: ${event.type}`);
+
+  // Handle the event
+  try {
+    switch (event.type) {
+      case 'payment_intent.succeeded':
+        const paymentIntent = event.data.object;
+        const orderId = paymentIntent.metadata.orderId;
+
+        console.log(`✅ Payment succeeded for order ${orderId}`);
+
+        // Confirm order after payment
+        await orchestrator.confirmOrderAfterPayment(orderId, paymentIntent.id);
+        break;
+
+      case 'payment_intent.payment_failed':
+        const failedPayment = event.data.object;
+        const failedOrderId = failedPayment.metadata.orderId;
+
+        console.log(`❌ Payment failed for order ${failedOrderId}`);
+
+        // Update order status
+        await query(`
+          UPDATE orders 
+          SET payment_status = 'failed'
+          WHERE id = $1
+        `, [failedOrderId]);
+        break;
+
+      default:
+        console.log(`Unhandled event type: ${event.type}`);
+    }
+
+    res.json({ received: true });
+  } catch (error) {
+    console.error('Error processing webhook:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * Cancel Order
+ */
+app.post('/api/orders/:orderId/cancel', async (req, res) => {
+  try {
+    const { orderId } = req.params;
+
+    console.log(`❌ Cancelling order ${orderId}`);
+
+    // Call orchestrator to cancel order and restore inventory
+    await orchestrator.cancelOrder(orderId);
+
+    res.json({ 
+      success: true,
+      message: 'Order cancelled successfully'
+    });
+
+  } catch (error) {
+    console.error('Error cancelling order:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * Confirm Order After Payment
+ */
+app.put('/api/orders/:orderId/confirm', async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { paymentIntentId } = req.body;
+
+    console.log(`✅ Confirming order ${orderId} after payment`);
+
+    // Call orchestrator to confirm order
+    await orchestrator.confirmOrderAfterPayment(orderId, paymentIntentId);
+
+    res.json({ 
+      success: true,
+      message: 'Order confirmed successfully'
+    });
+
+  } catch (error) {
+    console.error('Error confirming order:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -1222,10 +1391,10 @@ if (!process.env.VERCEL) {
     console.log(`
 ╔═══════════════════════════════════════════════════════════════╗
 ║                                                               ║
-║     🏥 Agentic AI Pharmacy System - Backend Server           ║
+║     🏥 Agentic AI Pharmacy System - Backend Server            ║
 ║                                                               ║
 ║     Status: RUNNING                                           ║
-║     Port: ${PORT}                                                   ║
+║     Port: ${PORT}                                             ║
 ║     Environment: ${process.env.NODE_ENV || 'development'}                              ║
 ║     Admin Password: ${process.env.ADMIN_SECRET ? '✅ SET' : '⚠️  Using default (admin123)'}                     ║
 ║                                                               ║
@@ -1233,6 +1402,10 @@ if (!process.env.VERCEL) {
 ║     • GET  /                                                  ║
 ║     • POST /api/conversation/start                            ║
 ║     • POST /api/conversation/message                          ║
+║     • POST /api/stripe/create-payment-intent     💳           ║
+║     • POST /api/stripe/webhook                   💳           ║
+║     • POST /api/orders/:id/cancel                💳           ║
+║     • PUT  /api/orders/:id/confirm               💳           ║
 ║     • GET  /api/medicines                                     ║
 ║     • GET  /api/orders                                        ║
 ║     • GET  /api/consumers                                     ║
