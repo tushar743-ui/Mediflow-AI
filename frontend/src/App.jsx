@@ -686,7 +686,7 @@ function App() {
     setSelectedConsumer(consumer);
 
     try {
-      const response = await axios.post(`${API_BASE_URL}/conversation/start`, {
+      const response = await axios.post(`${API_BASE_URL}/api/conversation/start`, {
         consumerId: consumer.id
       });
       setSessionId(response.data.sessionId);
