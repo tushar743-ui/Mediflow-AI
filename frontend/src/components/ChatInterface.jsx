@@ -322,7 +322,7 @@ function ChatInterface({ consumer, sessionId, apiBaseUrl, clerkUser }) {
 
   const loadConversationHistory = async () => {
     try {
-      const response = await axios.get(`${apiBaseUrl}/conversation/${sessionId}/history`);
+      const response = await axios.get(`${apiBaseUrl}/api/conversation/${sessionId}/history`);
       const history = response.data.history || [];
       
       setMessages(history.map(msg => ({
@@ -337,7 +337,7 @@ function ChatInterface({ consumer, sessionId, apiBaseUrl, clerkUser }) {
 
   const loadPendingAlerts = async () => {
     try {
-      const response = await axios.get(`${apiBaseUrl}/consumers/${consumer.id}/alerts`);
+      const response = await axios.get(`${apiBaseUrl}/api/consumers/${consumer.id}/alerts`);
       setPendingAlerts(response.data.alerts || []);
     } catch (error) {
       console.error('Error loading alerts:', error);

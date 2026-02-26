@@ -134,7 +134,7 @@ function PaymentPage() {
 
   const loadOrderDetails = async () => {
     try {
-      const response = await axios.get(`${apiBaseUrl}/orders/${orderId}`);
+      const response = await axios.get(`${apiBaseUrl}/api/orders/${orderId}`);
       setOrderDetails(response.data);
       setLoading(false);
     } catch (error) {

@@ -55,7 +55,7 @@ function AdminDashboard({ apiBaseUrl }) {
 
   const loadInventory = async () => {
     try {
-      const response = await axios.get(`${apiBaseUrl}/admin/inventory`, getAdminHeaders());
+      const response = await axios.get(`${apiBaseUrl}/api/admin/inventory`, getAdminHeaders());
       setInventory(response.data);
     } catch (error) {
       if (error?.response?.status === 401) {
@@ -66,13 +66,13 @@ function AdminDashboard({ apiBaseUrl }) {
   };
 
   const loadOrders = async () => {
-    const response = await axios.get(`${apiBaseUrl}/orders`);
+    const response = await axios.get(`${apiBaseUrl}/api/orders`);
     setOrders(response.data);
   };
 
   const loadAlerts = async () => {
     try {
-      const response = await axios.get(`${apiBaseUrl}/admin/alerts`, getAdminHeaders());
+      const response = await axios.get(`${apiBaseUrl}/api/admin/alerts`, getAdminHeaders());
       setAlerts(response.data);
     } catch (error) {
       if (error?.response?.status === 401) {
@@ -84,7 +84,7 @@ function AdminDashboard({ apiBaseUrl }) {
 
   const loadAgentActions = async () => {
     try {
-      const response = await axios.get(`${apiBaseUrl}/admin/agent-actions`, getAdminHeaders());
+      const response = await axios.get(`${apiBaseUrl}/api/admin/agent-actions`, getAdminHeaders());
       setAgentActions(response.data);
     } catch (error) {
       if (error?.response?.status === 401) {

@@ -40,7 +40,7 @@ export default function InventoryPage({ apiBaseUrl }) {
   useEffect(() => {
     const load = async () => {
       try {
-        const res = await axios.get(`${apiBaseUrl}/inventory`);
+        const res = await axios.get(`${apiBaseUrl}/api/inventory`);
         setItems(Array.isArray(res.data) ? res.data : []);
       } catch (e) {
         console.error("Inventory load failed:", e);
