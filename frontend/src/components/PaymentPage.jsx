@@ -107,7 +107,7 @@ function PaymentForm({ orderDetails, apiBaseUrl, onSuccess, onError }) {
           </>
         ) : (
           <>
-            Pay ${orderDetails.total_amount?.toFixed(2)}
+            Pay ${parseFloat(orderDetails.total_amount || 0).toFixed(2)}
           </>
         )}
       </button>
@@ -245,7 +245,7 @@ function PaymentPage() {
                     <span className="item-qty">Qty: {item.quantity}</span>
                   </div>
                   <span className="item-price">
-                    ${(item.unit_price * item.quantity).toFixed(2)}
+                    ${(parseFloat(item.unit_price || 0) * item.quantity).toFixed(2)}
                   </span>
                 </div>
               ))}
@@ -255,7 +255,7 @@ function PaymentPage() {
             <div className="total-section">
               <div className="total-row">
                 <span>Subtotal</span>
-                <span>${orderDetails.total_amount?.toFixed(2)}</span>
+                <span>${parseFloat(orderDetails.total_amount || 0).toFixed(2)}</span>
               </div>
               <div className="total-row">
                 <span>Tax</span>
@@ -263,7 +263,7 @@ function PaymentPage() {
               </div>
               <div className="total-row final">
                 <span>Total</span>
-                <span>${orderDetails.total_amount?.toFixed(2)}</span>
+                <span>${parseFloat(orderDetails.total_amount || 0).toFixed(2)}</span>
               </div>
             </div>
           </div>

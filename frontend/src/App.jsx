@@ -593,6 +593,7 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [adminUnlocked, setAdminUnlocked] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Redirect to landing if not signed in (except on landing page)
   useEffect(() => {
@@ -764,7 +765,7 @@ function App() {
           <div className="header-content">
             <div className="header-left">
               <h1 className="app-title">
-                <span className="icon"><img src="/qw.png" alt="Mediflow AI" /></span>
+                <span className="icon"><img src="/jg.png" alt="Mediflow AI" /></span>
                 Mediflow AI
               </h1>
               <p className="app-subtitle">
@@ -772,63 +773,84 @@ function App() {
               </p>
             </div>
 
-            <nav className="header-nav">
-              {/* User info with Clerk UserButton */}
-              {isSignedIn && (
-                <div className="user-info-nav">
-                  <span className="user-email">{user?.primaryEmailAddress?.emailAddress}</span>
-                  <UserButton afterSignOutUrl="/" />
-                </div>
-              )}
-
-              {/* Sign Out Button */}
-              <button 
-                className="nav-btn sign-out-btn" 
-                onClick={() => signOut({ redirectUrl: "/" })}
-              >
-                Sign Out
-              </button>
-
-              {/* Chat Button */}
-              <button
-                className={`nav-btn ${currentPath === '/app' || currentPath === '/chat' ? 'active' : ''}`}
-                onClick={() => navigate('/app')}
-              >
-                Chat
-              </button>
-
-              {/* Admin Button */}
-              <button
-                className={`nav-btn ${currentPath === '/admin' ? 'active' : ''}`}
-                onClick={handleAdminClick}
-              >
-                Admin {adminUnlocked ? '🔓' : '🔒'}
-              </button>
-
-              {/* Lock Admin Button */}
-              {adminUnlocked && currentPath === '/admin' && (
-                <button
-                  className="nav-btn lock-btn"
-                  onClick={handleLockAdmin}
-                  title="Lock Admin Panel"
-                >
-                  🔒 Lock
-                </button>
-              )}
-            </nav>
+            {/* Menu Button */}
+<button 
+  className="menu-toggle"
+  onClick={() => setSidebarOpen(true)}
+>
+  ☰
+</button>
 
             {selectedConsumer && (currentPath === '/app' || currentPath === '/chat') && (
               <div className="user-info">
                 <span className="user-name">{selectedConsumer.name}</span>
-                <button className="logout-btn" onClick={handleLogout}>
-                  Change Consumer
-                </button>
+                
               </div>
             )}
           </div>
         </header>
       )}
+{/* Sidebar Overlay */}
+<div 
+  className={`sidebar-overlay ${sidebarOpen ? 'show' : ''}`} 
+  onClick={() => setSidebarOpen(false)}
+></div>
 
+{/* Sidebar */}
+<div className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
+  <div className="sidebar-header">
+    <h3>Menu</h3>
+    <button onClick={() => setSidebarOpen(false)}>✕</button>
+  </div>
+
+  {isSignedIn && (
+    <div className="sidebar-user">
+      <p>{user?.primaryEmailAddress?.emailAddress}</p>
+      <UserButton afterSignOutUrl="/" />
+    </div>
+  )}
+
+  <button
+    className="sidebar-btn"
+    onClick={() => {
+      navigate('/app');
+      setSidebarOpen(false);
+    }}
+  >
+    💬 Chat
+  </button>
+
+  <button
+    className="sidebar-btn"
+    onClick={() => {
+      handleAdminClick();
+      setSidebarOpen(false);
+    }}
+  >
+    🛠 Admin {adminUnlocked ? '🔓' : '🔒'}
+  </button>
+
+  {adminUnlocked && location.pathname === '/admin' && (
+    <button
+      className="sidebar-btn"
+      onClick={() => {
+        handleLockAdmin();
+        setSidebarOpen(false);
+      }}
+    >
+      🔒 Lock Admin
+    </button>
+  )}
+
+  
+
+  <button
+    className="sidebar-btn signout"
+    onClick={() => signOut({ redirectUrl: "/" })}
+  >
+    🚪 Sign Out
+  </button>
+</div>
       <main className={`app-main ${isPaymentPage ? 'payment-page-main' : ''}`}>
         <Routes>
           <Route

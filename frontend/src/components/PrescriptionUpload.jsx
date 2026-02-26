@@ -77,7 +77,7 @@ function PrescriptionUpload({ apiBaseUrl, onMedicinesExtracted }) {
           </>
         ) : (
           <>
-            <span className="upload-icon"><img src="/upload.png" /></span>
+            <span className="upload-icon"><img src="/plus.png" /></span>
             <span className="upload-text">Upload Prescription</span>
           </>
         )}

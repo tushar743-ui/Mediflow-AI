@@ -8,7 +8,8 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.65rem 1rem;
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  /* background: linear-gradient(135deg, #10b981 0%, #059669 100%); */
+   border: 2px solid var(--primary-color);
   color: white;
   border-radius: 8px;
   cursor: pointer;
@@ -52,6 +53,7 @@
 
 .upload-text {
   font-size: 0.9rem;
+  color: black;
 }
 
 .upload-error {

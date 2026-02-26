@@ -82,8 +82,7 @@ function Step({ num, title, desc, delay }) {
 export default function GetStarted() {
   const navigate = useNavigate();
   const {openSignIn} = useClerk()
-  const {signOut}=useClerk()
-  const {issignedin}= useUser();
+  const {isSignedIn}= useUser();
 
   const goToApp = (e) => {
     e.preventDefault();
@@ -162,9 +161,13 @@ export default function GetStarted() {
           ))}
         </div>
         <div style={styles.navCTA}>
-          <a onClick={() =>issignedin? navigate('/app'): openSignIn({forceRedirectUrl: "/app", })}style={styles.btnOutline}>Sign In</a>
-          <a onClick={()=> issignedin? navigate('/app'):  signOut({forceRedirectUrl: "/app", })} style={styles.btnPrimary}>Get Started Free</a>
-        </div>
+  <a onClick={() =>isSignedIn? navigate('/app'): openSignIn({ forceRedirectUrl: "/app" })}style={styles.btnOutline}>
+    Sign In
+  </a>
+  <a onClick={() =>isSignedIn? navigate('/app'): openSignIn({ forceRedirectUrl: "/app" })}style={styles.btnPrimary}>
+    Get Started Free
+  </a>
+</div>
         <button onClick={() => setMenuOpen(!menuOpen)} style={styles.burger}>☰</button>
       </nav>
 
@@ -173,7 +176,7 @@ export default function GetStarted() {
           {["Features", "How It Works", "Safety"].map((l) => (
             <a key={l} href={`#${l.toLowerCase().replace(/ /g, "-")}`} style={styles.mobileLink} onClick={() => setMenuOpen(false)}>{l}</a>
           ))}
-          <a onClick={() =>issignedin? navigate('/app'): openSignIn({forceRedirectUrl: "/app", })} style={{ ...styles.btnPrimary, marginTop: 12 }}>Get Started Free</a>
+          <a onClick={() =>isSignedIn? navigate('/app'): openSignIn({ forceRedirectUrl: "/app" })} style={{ ...styles.btnPrimary, marginTop: 12 }}>Get Started Free</a>
         </div>
       )}
 
@@ -248,7 +251,7 @@ export default function GetStarted() {
               transition: "opacity 0.9s ease 0.9s, transform 0.9s ease 0.9s",
             }}
           >
-            <a onClick={() =>issignedin? navigate('/app'): openSignIn({forceRedirectUrl: "/app", })} style={styles.btnHeroPrimary}>Start Free Trial →</a>
+            <a onClick={() =>isSignedIn? navigate('/app'): openSignIn({ forceRedirectUrl: "/app" })} style={styles.btnHeroPrimary}>Start Free Trial →</a>
             <a href="#how-it-works" style={styles.btnHeroSecondary}>
               <span style={styles.playBtn}>▶</span> Watch Demo
             </a>
@@ -507,7 +510,10 @@ function CtaContent({ goToApp }) {
         Join 500+ pharmacies running on MediFlow AI. Setup takes under 30 minutes.
       </p>
       <div style={{ display: "flex", gap: 16, justifyContent: "center", flexWrap: "wrap" }}>
-        <a onClick={() =>issignedin? navigate('/app'): openSignIn({forceRedirectUrl: "/app", })} style={{ ...styles.btnPrimary, background: "#fff", color: BLUE, fontWeight: 700, padding: "16px 36px", fontSize: 17 }}>Enter MediFlow AI</a>
+
+        <a onClick={() =>isSignedIn? navigate('/app'): openSignIn({ forceRedirectUrl: "/app" })} style={{ ...styles.btnPrimary, background: "#fff", color: BLUE, fontWeight: 700, padding: "16px 36px", fontSize: 17 }}>Enter MediFlow AI</a>
+
+        
         <a href="#" style={{ ...styles.btnOutline, borderColor: "rgba(255,255,255,0.4)", color: "#fff", padding: "16px 36px", fontSize: 17 }}>Book a Demo</a>
       </div>
       <p style={{ color: "#93c5fd", marginTop: 24, fontSize: 14 }}>No credit card required · HIPAA compliant from day one</p>

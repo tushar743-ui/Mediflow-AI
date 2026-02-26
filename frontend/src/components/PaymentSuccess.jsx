@@ -68,7 +68,7 @@ function PaymentSuccess() {
               <span className="icon">💰</span>
               <div className="detail-text">
                 <span className="detail-label">Amount paid</span>
-                <span className="detail-value">${orderDetails?.total_amount?.toFixed(2)}</span>
+                <span className="detail-value">${parseFloat(orderDetails?.total_amount || 0).toFixed(2)}</span>
               </div>
             </div>
 

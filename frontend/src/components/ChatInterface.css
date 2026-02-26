@@ -251,7 +251,8 @@
 }
 
 .message.user .message-avatar {
-  background: linear-gradient(135deg, #64748b 0%, #475569 100%);
+  background: linear-gradient(135deg, #ffffff 0%, #ffffff 100%);
+  border: black 0.5px solid;
 }
 
 .message-content {
@@ -366,7 +367,7 @@
 
 .send-btn {
   padding: 0.875rem 1.5rem;
-  background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+  background: linear-gradient(135deg, var(--primary-color) 0%, white 100%);
   color: white;
   border: none;
   border-radius: var(--radius-md);

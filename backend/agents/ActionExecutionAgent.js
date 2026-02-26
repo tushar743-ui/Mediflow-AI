@@ -311,30 +311,55 @@ Thank you for choosing our pharmacy!
           process.env.NOTIFICATION_WEBHOOK_URL !== 'https://api.example.com/notifications') {
         
         // Build complete items array
-        const allItems = orderItems.map(item => ({
-          medicine_name: medicineMap[item.medicine_id],
-          quantity: item.quantity,
-          dosage_frequency: item.dosage_frequency,
-          unit_price: item.unit_price,
-          subtotal: item.subtotal
-        }));
+        // Build complete items array
+const allItems = orderItems.map(item => ({
+  medicine_name: medicineMap[item.medicine_id],
+  quantity: item.quantity,
+  dosage_frequency: item.dosage_frequency || 'As prescribed',
+  unit_price: parseFloat(item.unit_price),
+  subtotal: parseFloat(item.subtotal || (item.quantity * item.unit_price))
+}));
 
-        const notificationPayload = {
-          event: 'order.confirmation',
-          timestamp: new Date().toISOString(),
-          order_id: order.id,
-          customer_name: consumer.name,
-          customer_email: consumer.email || 'no-email@example.com',
-          customer_phone: consumer.phone || '',
-          medicine: medicineMap[orderItems[0].medicine_id],
-          quantity: orderItems[0].quantity,
-          total_amount: order.total_amount,
-          status: 'confirmed',
-          payment_status: order.payment_status || 'paid',  // NEW: Include payment status
-          items: itemsList,
-          items_array: allItems,
-          order_date: order.order_date || new Date().toISOString()
-        };
+// Create formatted medicine list with numbers
+const formattedMedicineList = allItems.map((item, index) => 
+  `${index + 1}. ${item.medicine_name} - ${item.quantity} units ($${item.unit_price.toFixed(2)} each)`
+).join('\n');
+
+const notificationPayload = {
+  event: 'order.confirmation',
+  timestamp: new Date().toISOString(),
+
+  customer_name: consumer.name,
+  customer_email: consumer.email || 'no-email@example.com',
+  customer_phone: consumer.phone || '',
+
+  order_id: order.id,
+  medicines_count: orderItems.length,
+  total_amount: parseFloat(order.total_amount).toFixed(2),
+  status: order.status || 'confirmed',
+  payment_status: order.payment_status || 'paid',
+  order_date: new Date(order.order_date || new Date()).toLocaleString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true
+  }),
+
+  medicine_list: formattedMedicineList,
+
+  currency: 'USD',
+  pickup_ready: true,
+  pharmacy_name: 'MediFlow AI Pharmacy',
+  pharmacy_phone: '+1-555-MEDFLOW',
+  pharmacy_address: '123 Healthcare St, Medical District, NY 10001',
+
+  items: allItems
+};
+
+
+
 
         try {
           console.log('\n════════════════════════════════════════════════════════');
