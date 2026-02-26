@@ -630,7 +630,7 @@ function App() {
   const loadConsumers = async () => {
     setLoading(true);
     try {
-      const response = await axios.get(`${import.meta.env.VITE_API_URL}/consumers`);
+      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/consumers`);
       setConsumers(response.data);
 
       // Auto-match or create consumer based on Clerk email
@@ -646,7 +646,7 @@ function App() {
           
           // Reload consumers to get the new one
           if (matchedConsumer) {
-            const updatedResponse = await axios.get(`${import.meta.env.VITE_API_URL}/consumers`);
+            const updatedResponse = await axios.get(`${import.meta.env.VITE_API_URL}/api/consumers`);
             setConsumers(updatedResponse.data);
           }
         }
