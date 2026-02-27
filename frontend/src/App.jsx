@@ -669,7 +669,7 @@ function App() {
     if (!user?.primaryEmailAddress?.emailAddress) return null;
 
     try {
-      const response = await axios.post(`${API_BASE_URL}/consumers`, {
+      const response = await axios.post(`${API_BASE_URL}/api/consumers`, {
         name: user.fullName || user.firstName || 'User',
         email: user.primaryEmailAddress.emailAddress,
         phone: user.primaryPhoneNumber?.phoneNumber || null

@@ -26,7 +26,7 @@ function PaymentForm({ orderDetails, apiBaseUrl, onSuccess, onError }) {
 
     try {
       // Step 1: Create payment intent on backend
-      const { data } = await axios.post(`${apiBaseUrl}/stripe/create-payment-intent`, {
+      const { data } = await axios.post(`${apiBaseUrl}/api/stripe/create-payment-intent`, {
         orderId: orderDetails.id,
         amount: Math.round(orderDetails.total_amount * 100), // Convert to cents
       });
@@ -150,7 +150,7 @@ function PaymentPage() {
     }
 
     try {
-      await axios.post(`${apiBaseUrl}/orders/${orderId}/cancel`);
+      await axios.post(`${apiBaseUrl}/api/orders/${orderId}/cancel`);
       alert('Order cancelled successfully');
       navigate('/chat');
     } catch (error) {
@@ -162,7 +162,7 @@ function PaymentPage() {
   const handlePaymentSuccess = async (paymentIntentId) => {
     try {
       // Confirm order on backend
-      await axios.put(`${apiBaseUrl}/orders/${orderId}/confirm`, {
+      await axios.put(`${apiBaseUrl}/api/orders/${orderId}/confirm`, {
         paymentIntentId,
       });
 

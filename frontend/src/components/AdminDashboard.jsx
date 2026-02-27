@@ -97,7 +97,7 @@ function AdminDashboard({ apiBaseUrl }) {
   const runPredictions = async () => {
     setPredictionRunning(true);
     try {
-      const response = await axios.post(`${apiBaseUrl}/admin/run-predictions`, {}, getAdminHeaders());
+      const response = await axios.post(`${apiBaseUrl}/api/admin/run-predictions`, {}, getAdminHeaders());
       alert(`Predictions completed! Generated ${response.data.predictionsCount} refill predictions.`);
       await loadAlerts();
     } catch (error) {

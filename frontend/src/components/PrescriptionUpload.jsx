@@ -35,7 +35,7 @@ function PrescriptionUpload({ apiBaseUrl, onMedicinesExtracted }) {
       formData.append('prescription', file);
 
       const response = await axios.post(
-        `${apiBaseUrl}/prescription/upload`,
+        `${apiBaseUrl}/api/prescription/upload`,
         formData,
         {
           headers: {
