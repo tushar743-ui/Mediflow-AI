@@ -25,6 +25,9 @@ node_modules
 .next
 
 
+
 # Docker
 .dockerignore
-
+Dockerfile
+docker-compose.yml
+docker-compose.prod.yml

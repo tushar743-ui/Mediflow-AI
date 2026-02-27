@@ -1,2 +1,7 @@
 .env
 
+# docker files
+.dockerignore
+docker-compose.yml
+Dockerfile
+docker-compose.prod.yml

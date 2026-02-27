@@ -1,111 +1,111 @@
-# version: '3.8'
+version: '3.8'
 
-# services:
-#   # PostgreSQL Database
-#   postgres:
-#     image: postgres:15-alpine
-#     container_name: mediflow-db
-#     restart: always
-#     environment:
-#       POSTGRES_USER: mediflow
-#       POSTGRES_PASSWORD: mediflow_password_2024
-#       POSTGRES_DB: mediflow_pharmacy
-#     ports:
-#       - "5432:5432"
-#     volumes:
-#       - postgres_data:/var/lib/postgresql/data
-#       - ./database/schema.sql:/docker-entrypoint-initdb.d/1-schema.sql
-#       - ./database/seed.sql:/docker-entrypoint-initdb.d/2-seed.sql
-#     healthcheck:
-#       test: ["CMD-SHELL", "pg_isready -U mediflow"]
-#       interval: 10s
-#       timeout: 5s
-#       retries: 5
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: mediflow-db
+    restart: always
+    environment:
+      POSTGRES_USER: mediflow
+      POSTGRES_PASSWORD: mediflow_password_2024
+      POSTGRES_DB: mediflow_pharmacy
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/1-schema.sql
+      - ./database/seed.sql:/docker-entrypoint-initdb.d/2-seed.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mediflow"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-#   # Backend API
-#   backend:
-#     build:
-#       context: ./backend
-#       dockerfile: Dockerfile
-#     container_name: mediflow-backend
-#     restart: always
-#     ports:
-#       - "3001:3001"
-#     environment:
-#       # Database
-#       DATABASE_URL: postgresql://neondb_owner:npg_9ACTpVMlrLS6@ep-sweet-dream-a82z8loy-pooler.eastus2.azure.neon.tech/neondb?sslmode=require&channel_binding=require
+  # Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: mediflow-backend
+    restart: always
+    ports:
+      - "3001:3001"
+    environment:
+      # Database
+      DATABASE_URL: postgresql://neondb_owner:npg_9ACTpVMlrLS6@ep-sweet-dream-a82z8loy-pooler.eastus2.azure.neon.tech/neondb?sslmode=require&channel_binding=require
       
-#       # Server
-#       PORT: 3001
-#       NODE_ENV: development
+      # Server
+      PORT: 3001
+      NODE_ENV: development
       
-#       # Clerk (Add your keys)
-#       CLERK_PUBLISHABLE_KEY: ${pk_test_dGVuZGVyLWRyYWtlLTIzLmNsZXJrLmFjY291bnRzLmRldiQ}
-#       CLERK_SECRET_KEY: ${sk_test_LAZhZs44y7uhJmmN4WT4N02ypxjHSXRUo08bN6Jw6K}
+      # Clerk (Add your keys)
+      CLERK_PUBLISHABLE_KEY: ${pk_test_dGVuZGVyLWRyYWtlLTIzLmNsZXJrLmFjY291bnRzLmRldiQ}
+      CLERK_SECRET_KEY: ${sk_test_LAZhZs44y7uhJmmN4WT4N02ypxjHSXRUo08bN6Jw6K}
       
-#       # Stripe (Add your keys)
-#       STRIPE_SECRET_KEY: ${sk_test_51T4ISsKSUJyDceSIhLkwELWOViigagxpPuDzibuQqMiTYpeNLo1qo9lAJmHiDNc73VyVTtY2kkArGMbzg3KKcslg00wLfdSiwV}
-#       STRIPE_PUBLISHABLE_KEY: ${pk_test_51T4ISsKSUJyDceSIiQGsT7g2PmaZEQm0yRfRFVnethzYhV42KbOJ5kAxlvHsvdkgv5aYZOzVR49bPYxeowe0bMzm00KxAHzFqf}
-#       STRIPE_WEBHOOK_SECRET: ${whsec_pQ1t5rCktQs1Pc2mlrVRO6G0BiZSrdYl}
+      # Stripe (Add your keys)
+      STRIPE_SECRET_KEY: ${sk_test_51T4ISsKSUJyDceSIhLkwELWOViigagxpPuDzibuQqMiTYpeNLo1qo9lAJmHiDNc73VyVTtY2kkArGMbzg3KKcslg00wLfdSiwV}
+      STRIPE_PUBLISHABLE_KEY: ${pk_test_51T4ISsKSUJyDceSIiQGsT7g2PmaZEQm0yRfRFVnethzYhV42KbOJ5kAxlvHsvdkgv5aYZOzVR49bPYxeowe0bMzm00KxAHzFqf}
+      STRIPE_WEBHOOK_SECRET: ${whsec_pQ1t5rCktQs1Pc2mlrVRO6G0BiZSrdYl}
       
-#       # AI Services
-#       GROQ_API_KEY: ${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}
+      # AI Services
+      GROQ_API_KEY: ${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}
    
       
-#       # Optional Services
-#       DEEPGRAM_API_KEY: ${c5a0bd8950ca20e22da05d5be125d21d89965ba9}
-#       ELEVENLABS_API_KEY: ${sk_c1f654217763fb90232200f7fe1f00ef330a3b91fc746aa6}
+      # Optional Services
+      DEEPGRAM_API_KEY: ${c5a0bd8950ca20e22da05d5be125d21d89965ba9}
+      ELEVENLABS_API_KEY: ${sk_c1f654217763fb90232200f7fe1f00ef330a3b91fc746aa6}
       
-#       # Webhooks
-#       FULFILLMENT_WEBHOOK_URL: ${https://hooks.zapier.com/hooks/catch/26590502/u0222z6/}
-#       NOTIFICATION_WEBHOOK_URL: ${https://hooks.zapier.com/hooks/catch/26590502/u0hnhrg/}
+      # Webhooks
+      FULFILLMENT_WEBHOOK_URL: ${https://hooks.zapier.com/hooks/catch/26590502/u0222z6/}
+      NOTIFICATION_WEBHOOK_URL: ${https://hooks.zapier.com/hooks/catch/26590502/u0hnhrg/}
       
-#       # Langfuse (Optional)
-#       LANGFUSE_SECRET_KEY: ${sk-lf-379381d1-65f8-4df4-ad99-2c2e6fb2e3ee}
-#       LANGFUSE_PUBLIC_KEY: ${pk-lf-ab922566-7953-4815-95a3-4fb8efc5e64b}
-#       LANGFUSE_HOST: https://cloud.langfuse.com
+      # Langfuse (Optional)
+      LANGFUSE_SECRET_KEY: ${sk-lf-379381d1-65f8-4df4-ad99-2c2e6fb2e3ee}
+      LANGFUSE_PUBLIC_KEY: ${pk-lf-ab922566-7953-4815-95a3-4fb8efc5e64b}
+      LANGFUSE_HOST: https://cloud.langfuse.com
       
-#       # Admin
-#       ADMIN_SECRET: ${912}
+      # Admin
+      ADMIN_SECRET: ${912}
       
-#       # Cron Schedule
-#       PREDICTION_SCHEDULE: "0 9 * * *"
+      # Cron Schedule
+      PREDICTION_SCHEDULE: "0 9 * * *"
     
-#     depends_on:
-#       postgres:
-#         condition: service_healthy
-#     volumes:
-#       - ./backend:/app
-#       - /app/node_modules
-#     command: node server.js
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    command: node server.js
 
-#   # Frontend
-#   frontend:
-#     build:
-#       context: ./frontend
-#       dockerfile: Dockerfile
-#     container_name: mediflow-frontend
-#     restart: always
-#     ports:
-#       - "5173:5173"
-#     environment:
-#       # API URL
-#       VITE_API_URL: http://localhost:3001
+  # Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: mediflow-frontend
+    restart: always
+    ports:
+      - "5173:5173"
+    environment:
+      # API URL
+      VITE_API_URL: http://localhost:3001
       
-#       # Stripe
-#       VITE_STRIPE_PUBLISHABLE_KEY: ${pk_test_51T4ISsKSUJyDceSIiQGsT7g2PmaZEQm0yRfRFVnethzYhV42KbOJ5kAxlvHsvdkgv5aYZOzVR49bPYxeowe0bMzm00KxAHzFqf}
+      # Stripe
+      VITE_STRIPE_PUBLISHABLE_KEY: ${pk_test_51T4ISsKSUJyDceSIiQGsT7g2PmaZEQm0yRfRFVnethzYhV42KbOJ5kAxlvHsvdkgv5aYZOzVR49bPYxeowe0bMzm00KxAHzFqf}
       
-#       # Clerk
-#       VITE_CLERK_PUBLISHABLE_KEY: ${pk_test_dGVuZGVyLWRyYWtlLTIzLmNsZXJrLmFjY291bnRzLmRldiQ}
+      # Clerk
+      VITE_CLERK_PUBLISHABLE_KEY: ${pk_test_dGVuZGVyLWRyYWtlLTIzLmNsZXJrLmFjY291bnRzLmRldiQ}
     
-#     depends_on:
-#       - backend
-#     volumes:
-#       - ./frontend:/app
-#       - /app/node_modules
-#     stdin_open: true
-#     tty: true
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    stdin_open: true
+    tty: true
 
-# volumes:
-#   postgres_data:
-#     driver: local
+volumes:
+  postgres_data:
+    driver: local
