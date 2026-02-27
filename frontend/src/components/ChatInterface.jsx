@@ -363,7 +363,7 @@ function ChatInterface({ consumer, sessionId, apiBaseUrl, clerkUser }) {
 
       console.log('Sending message with email:', customerEmail);
 
-      const response = await axios.post(`${apiBaseUrl}/conversation/message`, {
+      const response = await axios.post(`${apiBaseUrl}/api/conversation/message`, {
         sessionId,
         consumerId: consumer.id,
         message: message,
