@@ -43,3 +43,8 @@ node_modules/
 *.log
 .DS_Store
 .vercel
+
+
+
+# Docker
+.dockerignore

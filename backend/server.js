@@ -930,7 +930,7 @@ app.get('/api/consumers', async (req, res) => {
  */
 app.post('/api/consumers', async (req, res) => {
   try {
-    const { name, email, phone } = req.body;
+    const { name, email} = req.body;
 
     if (!email) {
       return res.status(400).json({ error: 'Email is required' });
@@ -945,10 +945,10 @@ app.post('/api/consumers', async (req, res) => {
 
     // Create new consumer
     const result = await query(`
-      INSERT INTO consumers (name, email, phone)
-      VALUES ($1, $2, $3)
+      INSERT INTO consumers (name, email)
+      VALUES ($1, $2)
       RETURNING *
-    `, [name, email, phone]);
+    `, [name, email]);
 
     console.log('Created new consumer:', result.rows[0]);
     res.json(result.rows[0]);
