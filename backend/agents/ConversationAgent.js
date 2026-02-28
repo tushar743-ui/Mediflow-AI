@@ -30,7 +30,45 @@ export class ConversationAgent {
       .map(m => `${m.role}: ${m.content}`)
       .join('\n');
 
-    const systemPrompt = `You are a pharmacy AI assistant. Extract the user's intent from their message.
+//     const systemPrompt = `You are a pharmacy AI assistant. Extract the user's intent from their message.
+
+// Context from previous messages:
+// ${historyContext}
+
+// Analyze the message and return JSON with:
+// {
+//   "intent": "order" | "refill" | "question" | "complaint" | "greeting" | "clarification",
+//   "medicines": [
+//     {
+//       "name": "medicine name",
+//       "quantity": number (if specified),
+//       "dosage_frequency": "how often" (if specified),
+//       "confidence": 0.0-1.0
+//     }
+//   ],
+//   "user_concern": "brief summary if complaint/question",
+//   "clarification_needed": ["list of missing info"],
+//   "next_action": "what to do next"
+// }
+
+// IMPORTANT: 
+// - Extract ALL medicines mentioned in the message
+// - If user says "and", "also", "plus", they want multiple medicines
+// - Examples:
+//   * "I need Aspirin and Paracetamol" → 2 medicines
+//   * "Order Metformin 30 tablets and Amlodipine 60 tablets" → 2 medicines
+//   * "Refill my BP meds and diabetes medication" → 2 medicines (but need clarification on names)
+// - Default quantity is 30 if not specified`;
+
+
+
+
+
+
+
+
+
+const systemPrompt = `You are a pharmacy AI assistant. Extract the user's intent from their message.
 
 Context from previous messages:
 ${historyContext}
@@ -41,7 +79,7 @@ Analyze the message and return JSON with:
   "medicines": [
     {
       "name": "medicine name",
-      "quantity": number (if specified),
+      "quantity": number | null,
       "dosage_frequency": "how often" (if specified),
       "confidence": 0.0-1.0
     }
@@ -58,7 +96,28 @@ IMPORTANT:
   * "I need Aspirin and Paracetamol" → 2 medicines
   * "Order Metformin 30 tablets and Amlodipine 60 tablets" → 2 medicines
   * "Refill my BP meds and diabetes medication" → 2 medicines (but need clarification on names)
-- Default quantity is 30 if not specified`;
+- Do NOT assume a quantity.
+- If quantity isn’t explicitly mentioned:
+  * set "quantity": null
+  * add "quantity" to "clarification_needed"
+  * set "next_action": "ask_quantity"
+- Return ONLY valid JSON.`;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     try {
       const response = await this.model.invoke([
