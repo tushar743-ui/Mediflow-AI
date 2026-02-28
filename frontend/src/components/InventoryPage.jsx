@@ -4,6 +4,9 @@ import "./InventoryPage.css";
 
 const PLACEHOLDER_IMG = "/placeholder-product.png";
 
+// Optional: add a 2nd placeholder if you have one
+const FALLBACK_IMG = "/placeholder-product.png";
+
 function formatPrice(value) {
   if (value === null || value === undefined || value === "") return "-";
   const num = Number(value);
@@ -11,26 +14,47 @@ function formatPrice(value) {
   return `$${num.toFixed(2)}`;
 }
 
-function normalizeImageUrl(imageUrl) {
-  if (!imageUrl) return "";
+function safeEncodePath(p) {
+  try {
+    // encodeURI keeps "/" intact but encodes spaces etc.
+    return encodeURI(p);
+  } catch {
+    return p;
+  }
+}
 
-  const url = String(imageUrl).trim();
+function buildImageCandidates(imageUrl) {
+  if (!imageUrl) return [];
 
-  // If already absolute or starts with /, keep it (but encode spaces etc.)
-  if (url.startsWith("http") || url.startsWith("/")) {
-    try {
-      return encodeURI(url);
-    } catch {
-      return url;
-    }
+  let url = String(imageUrl).trim();
+
+  // normalize slashes (sometimes DB has backslashes)
+  url = url.replace(/\\/g, "/");
+
+  // If full URL (http/https) -> use as-is
+  if (/^https?:\/\//i.test(url)) {
+    return [safeEncodePath(url)];
   }
 
-  // Otherwise treat as filename inside /product-images
-  // IMPORTANT: filenames like "Screenshot 2026-02-18 143120.png" must be encoded
-  return `/product-images/${encodeURIComponent(url)}`;
+  // If already a site-absolute path like "/product-images/a.png"
+  if (url.startsWith("/")) {
+    return [safeEncodePath(url)];
+  }
+
+  // Otherwise it's likely just a filename: "abc.png"
+  // Try common locations in Vite public/
+  const filename = encodeURIComponent(url);
+
+  return [
+    `/product-images/${filename}`,
+    `/images/${filename}`,
+    `/${filename}`,
+  ];
 }
 
 export default function InventoryPage({ apiBaseUrl }) {
+  const BASE = (apiBaseUrl || "").replace(/\/+$/, "");
+
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
@@ -39,8 +63,9 @@ export default function InventoryPage({ apiBaseUrl }) {
 
   useEffect(() => {
     const load = async () => {
+      setLoading(true);
       try {
-        const res = await axios.get(`${apiBaseUrl}/api/inventory`);
+        const res = await axios.get(`${BASE}/api/medicines`);
         setItems(Array.isArray(res.data) ? res.data : []);
       } catch (e) {
         console.error("Inventory load failed:", e);
@@ -50,7 +75,7 @@ export default function InventoryPage({ apiBaseUrl }) {
       }
     };
     load();
-  }, [apiBaseUrl]);
+  }, [BASE]);
 
   const filtered = useMemo(() => {
     const query = q.trim().toLowerCase();
@@ -102,9 +127,7 @@ export default function InventoryPage({ apiBaseUrl }) {
         <div className="inv-header">
           <div>
             <h2 className="inv-title">Inventory</h2>
-            <p className="inv-subtitle">
-              Browse available products (no stock shown)
-            </p>
+            <p className="inv-subtitle">All the available products </p>
           </div>
 
           <div className="inv-controls">
@@ -148,26 +171,41 @@ export default function InventoryPage({ apiBaseUrl }) {
         ) : (
           <div className="inv-grid">
             {filtered.map((m) => {
-              const imgSrc = normalizeImageUrl(m.image_url) || PLACEHOLDER_IMG;
               const price = m.price_rec ?? m.price;
+              const candidates = buildImageCandidates(m.image_url);
 
               return (
                 <div className="inv-product" key={m.id}>
                   <div className="inv-img-wrap">
                     <img
-                      src={imgSrc}
+                      src={candidates[0] || PLACEHOLDER_IMG}
                       alt={m.medicine_name || "Medicine"}
                       loading="lazy"
                       onError={(e) => {
-                        e.currentTarget.onerror = null; // prevent infinite loop
-                        e.currentTarget.src = PLACEHOLDER_IMG;
+                        const img = e.currentTarget;
+                        const curr = img.getAttribute("data-idx") || "0";
+                        const idx = Number(curr);
+
+                        const nextIdx = idx + 1;
+                        if (candidates[nextIdx]) {
+                          img.setAttribute("data-idx", String(nextIdx));
+                          img.src = candidates[nextIdx];
+                          return;
+                        }
+
+                        console.warn("Image missing for:", {
+                          id: m.id,
+                          name: m.medicine_name,
+                          image_url: m.image_url,
+                          tried: candidates,
+                        });
+
+                        img.onerror = null;
+                        img.src = FALLBACK_IMG;
                       }}
+                      data-idx="0"
                     />
-                    <div
-                      className={`inv-badge ${
-                        m.prescription_required ? "rx" : "otc"
-                      }`}
-                    >
+                    <div className={`inv-badge ${m.prescription_required ? "rx" : "otc"}`}>
                       {m.prescription_required ? "Rx" : "OTC"}
                     </div>
                   </div>
@@ -201,9 +239,7 @@ export default function InventoryPage({ apiBaseUrl }) {
                     </div>
 
                     {m.prescription_required && (
-                      <div className="inv-note">
-                        Prescription required to purchase.
-                      </div>
+                      <div className="inv-note">Prescription required to purchase.</div>
                     )}
                   </div>
                 </div>
