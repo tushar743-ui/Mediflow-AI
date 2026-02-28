@@ -34,7 +34,7 @@ fs.mkdir(uploadsDir, { recursive: true }).catch(console.error);
 // Configure multer for file uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, '/temp');
+    cb(null, '/tmp');
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
