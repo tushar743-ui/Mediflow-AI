@@ -402,6 +402,51 @@ export class AgentOrchestrator {
     this.actionAgent = new ActionExecutionAgent();
   }
 
+  // ============================================================================
+  // QUANTITY SANITIZATION
+  // Prevents "Allegra 120" → quantity:120, "Pacimol 650" → quantity:650
+  // The number in a medicine name is ALWAYS a dosage strength (mg), not quantity
+  // ============================================================================
+
+  /**
+   * Extract the dosage strength number embedded in a medicine name.
+   * e.g. "Allegra 120" → 120, "Pacimol 650" → 650, "Wysolone" → null
+   */
+  extractStrengthFromName(medicineName) {
+    const match = String(medicineName || '').match(/(\d+)\s*(?:mg|mcg|ml|g)?$/i);
+    return match ? parseInt(match[1]) : null;
+  }
+
+  /**
+   * Sanitize a quantity value for a given medicine name.
+   * Returns null (→ ask user) if quantity looks like it's the mg strength.
+   */
+  sanitizeQuantity(medicineName, quantity) {
+    if (!quantity || !Number.isInteger(quantity) || quantity <= 0) return null;
+
+    const strength = this.extractStrengthFromName(medicineName);
+
+    // If the quantity exactly matches the mg strength in the name → it's a parsing error
+    if (strength && quantity === strength) {
+      console.warn(
+        `⚠️  Quantity ${quantity} matches dosage strength in "${medicineName}". ` +
+        `Clearing quantity — will ask user to confirm.`
+      );
+      return null;
+    }
+
+    // Unrealistically high quantities (>60) for a single order are almost always parsing artifacts
+    if (quantity > 60) {
+      console.warn(
+        `⚠️  Quantity ${quantity} is unrealistically high for "${medicineName}". ` +
+        `Clearing quantity — will ask user to confirm.`
+      );
+      return null;
+    }
+
+    return quantity;
+  }
+
   async processUserMessage(userMessage, sessionId, consumerId, conversationHistory = [], customerEmail = null) {
     const tracer = new AgentTracer(sessionId, 'orchestrator');
     tracer.startTrace('process_user_message');
@@ -509,23 +554,26 @@ export class AgentOrchestrator {
 
         console.log(`✅ Medicine matched: ${matchedMedicine.medicine_name} (${matchedMedicine.generic_name})`);
 
-        // ✅ IMPORTANT: Do NOT default quantity here
-        const qty = medicineRequest?.quantity;
+        // ✅ KEY FIX: Sanitize quantity BEFORE using it
+        // This strips out cases where "Allegra 120" → quantity:120 (that's mg, not tablets)
+        const rawQty = medicineRequest?.quantity;
+        const qty = this.sanitizeQuantity(matchedMedicine.medicine_name, rawQty);
 
-        const isValidQty = Number.isInteger(qty) && qty > 0;
+        console.log(`📦 Quantity: raw=${rawQty}, sanitized=${qty}`);
+
+        const isValidQty = qty !== null && Number.isInteger(qty) && qty > 0;
 
         if (!isValidQty) {
-          // Tell frontend to open quantity popup for this medicine
+          // Ask user to select quantity via popup
           pendingQuantitySelections.push({
             medicineId: matchedMedicine.id,
             medicine_name: matchedMedicine.medicine_name,
             generic_name: matchedMedicine.generic_name,
             unit_type: matchedMedicine.unit_type,
             price: parseFloat(matchedMedicine.price),
-            // optional: set UI default selection (UI-only, not order default)
-            suggested_default_quantity: 30
+            suggested_default_quantity: 1
           });
-          continue; // 🚫 STOP: don't run safety checks without a quantity
+          continue;
         }
 
         const orderRequest = {
@@ -541,6 +589,13 @@ export class AgentOrchestrator {
           orderRequest,
           sessionId
         );
+
+        // ✅ Use sanitized quantity returned from safety agent (double safety net)
+        const finalQuantity = safetyResult.sanitizedQuantity ?? qty;
+        if (finalQuantity !== qty) {
+          console.log(`🔧 Safety agent further corrected quantity: ${qty} → ${finalQuantity}`);
+          orderRequest.quantity = finalQuantity;
+        }
 
         if (safetyResult.decision === 'APPROVED') {
           orderResults.push({
@@ -559,9 +614,8 @@ export class AgentOrchestrator {
       }
     }
 
-    // ✅ If any medicines need quantity, return NOW so frontend shows popup
+    // If any medicines need quantity selection, return popup trigger
     if (pendingQuantitySelections.length > 0) {
-      // If literally everything is missing qty/not found, we still drive popup for found ones.
       const msg =
         pendingQuantitySelections.length === 1
           ? `Please select the quantity for ${pendingQuantitySelections[0].medicine_name}.`
@@ -573,7 +627,6 @@ export class AgentOrchestrator {
         next_action: 'ask_quantity',
         clarification_needed: ['quantity'],
         pendingQuantitySelections,
-        // optionally pass along errors so you can show them in UI
         errors: errors.length ? errors : undefined
       };
     }

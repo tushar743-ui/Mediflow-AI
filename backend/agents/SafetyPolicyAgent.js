@@ -17,6 +17,45 @@ export class SafetyPolicyAgent {
   }
 
   /**
+   * Sanitize quantity — strip dosage strength mistakenly passed as quantity.
+   * 
+   * Examples:
+   *   "Allegra 120"  → quantity should be stripped of 120 (that's mg)
+   *   "Pacimol 650"  → quantity should be stripped of 650 (that's mg)
+   * 
+   * If the requested quantity matches a known dosage suffix in the medicine name,
+   * we default to 1 strip/tablet as a safe fallback.
+   */
+  sanitizeQuantity(medicineName, requestedQuantity) {
+    if (!requestedQuantity || requestedQuantity === 0) return 1;
+
+    // Extract trailing number from medicine name (e.g. "Allegra 120" → 120)
+    const nameStrengthMatch = String(medicineName || '').match(/(\d+)\s*(?:mg|mcg|ml|g)?$/i);
+    const strengthNumber = nameStrengthMatch ? parseInt(nameStrengthMatch[1]) : null;
+
+    // If requested quantity exactly equals the strength number in the name,
+    // it's almost certainly a parsing error — use 1 as safe default
+    if (strengthNumber && requestedQuantity === strengthNumber) {
+      console.warn(
+        `⚠️  Quantity ${requestedQuantity} matches dosage strength in "${medicineName}". ` +
+        `Treating as 1 unit (strength was mistaken for quantity).`
+      );
+      return 1;
+    }
+
+    // Also catch obviously unrealistic quantities (>60 for a single order)
+    if (requestedQuantity > 60) {
+      console.warn(
+        `⚠️  Quantity ${requestedQuantity} is unrealistically high for "${medicineName}". ` +
+        `Capping at 1 — likely a parsing artifact.`
+      );
+      return 1;
+    }
+
+    return requestedQuantity;
+  }
+
+  /**
    * Comprehensive safety check for an order request
    */
   async evaluateOrderSafety(consumerId, medicineData, orderRequest, sessionId) {
@@ -46,13 +85,30 @@ export class SafetyPolicyAgent {
         medicineData
       );
 
+      // ✅ FIX: Sanitize quantity BEFORE any checks
+      // This prevents "Allegra 120" → quantity:120 or "Pacimol 650" → quantity:650
+      const sanitizedQuantity = this.sanitizeQuantity(
+        medicineData.medicine_name,
+        orderRequest.quantity
+      );
+
+      if (sanitizedQuantity !== orderRequest.quantity) {
+        console.log(
+          `🔧 Quantity corrected for "${medicineData.medicine_name}": ` +
+          `${orderRequest.quantity} → ${sanitizedQuantity}`
+        );
+      }
+
+      // Use sanitized quantity for all subsequent checks
+      const sanitizedRequest = { ...orderRequest, quantity: sanitizedQuantity };
+
       // Check 1: Stock Availability
       const stockCheck = this.checkStockAvailability(
         medicineData,
-        orderRequest.quantity
+        sanitizedRequest.quantity
       );
       checks.push(stockCheck);
-      
+
       if (!stockCheck.passed) {
         canProceed = false;
         reasoning.push(stockCheck.reason);
@@ -60,7 +116,7 @@ export class SafetyPolicyAgent {
 
       tracer.logToolCall(
         'stock_check',
-        { medicine: medicineData.medicine_name, requested: orderRequest.quantity },
+        { medicine: medicineData.medicine_name, requested: sanitizedRequest.quantity },
         stockCheck
       );
 
@@ -87,7 +143,7 @@ export class SafetyPolicyAgent {
       // Check 3: Dosage Safety (using LLM for intelligent analysis)
       const dosageCheck = await this.checkDosageSafety(
         medicineData,
-        orderRequest,
+        sanitizedRequest,
         tracer
       );
       checks.push(dosageCheck);
@@ -103,7 +159,7 @@ export class SafetyPolicyAgent {
 
       tracer.logToolCall(
         'dosage_check',
-        { medicine: medicineData.medicine_name, dosage: orderRequest.dosageFrequency },
+        { medicine: medicineData.medicine_name, dosage: sanitizedRequest.dosageFrequency },
         dosageCheck
       );
 
@@ -111,7 +167,7 @@ export class SafetyPolicyAgent {
       const historyCheck = await this.checkOrderHistory(
         consumerId,
         medicineData.id,
-        orderRequest.quantity,
+        sanitizedRequest.quantity,
         tracer
       );
       checks.push(historyCheck);
@@ -148,7 +204,9 @@ export class SafetyPolicyAgent {
         reasoning: reasoning.join('; '),
         reason: reasoning.join('; '),
         checks,
-        medicineData
+        medicineData,
+        // ✅ Return sanitized quantity so orchestrator uses corrected value
+        sanitizedQuantity
       };
 
       tracer.logDecision(
@@ -248,21 +306,31 @@ export class SafetyPolicyAgent {
    * Check dosage safety using LLM
    */
   async checkDosageSafety(medicineData, orderRequest, tracer) {
-    const systemPrompt = `You are a pharmaceutical safety expert. Evaluate if the requested dosage and quantity are safe and reasonable.
+    // ✅ FIX: Explicitly tell the LLM that numbers in medicine names are strengths, not quantities
+    const systemPrompt = `You are a pharmaceutical safety expert. Evaluate if the requested quantity and dosage frequency are safe and reasonable.
 
 Medicine information:
 - Name: ${medicineData.medicine_name}
-- Standard dosage: ${medicineData.dosage_info || 'Not specified'}
+- Standard dosage info: ${medicineData.dosage_info || 'Not specified'}
 - Category: ${medicineData.category || 'General'}
 
-Order request:
-- Quantity: ${orderRequest.quantity} ${medicineData.unit_type}
-- Dosage frequency: ${orderRequest.dosageFrequency || 'not specified'}
+IMPORTANT CONTEXT:
+- Medicine names like "Allegra 120", "Pacimol 650", "Dolo 650" contain the STRENGTH in mg, NOT the quantity
+- "Allegra 120" means Allegra at 120mg strength — the 120 is NOT a quantity
+- "Pacimol 650" means Paracetamol at 650mg strength — the 650 is NOT a quantity
+- The quantity below is the number of tablets/strips being ordered, already corrected for this
 
-Evaluate:
-1. Is the quantity reasonable for typical use?
-2. Does the dosage frequency align with standard practice?
-3. Are there any red flags?
+Order request:
+- Quantity ordered: ${orderRequest.quantity} ${medicineData.unit_type}s (this is tablets/strips count, NOT mg)
+- Dosage frequency: ${orderRequest.dosageFrequency || 'As prescribed'}
+
+Evaluate ONLY:
+1. Is ordering ${orderRequest.quantity} tablets/strips reasonable for a single order?
+2. Does the dosage frequency align with standard practice for this medicine?
+
+A quantity of 1-10 tablets/strips is always reasonable.
+A quantity of 11-30 may be reasonable for chronic conditions.
+Only flag if truly dangerous or nonsensical.
 
 IMPORTANT: Respond ONLY with valid JSON. No markdown, no backticks, no extra text.
 
@@ -281,9 +349,9 @@ Return this exact format:
 
       let content = response.content.trim();
       content = content.replace(/```json\n?/g, '').replace(/```\n?/g, '');
-      
+
       const jsonMatch = content.match(/\{[\s\S]*\}/);
-      
+
       if (!jsonMatch) {
         return {
           check: 'dosage_safety',
@@ -338,8 +406,9 @@ Return this exact format:
     const recentOrders = result.rows;
     const averageQuantity = recentOrders.reduce((sum, order) => sum + order.quantity, 0) / recentOrders.length;
 
-    // Check for unusual quantity (more than 2x average)
-    if (requestedQuantity > averageQuantity * 2) {
+    // ✅ FIX: Only flag if more than 3x average AND absolute quantity > 10
+    // Previously triggered on 2x which is too sensitive for small quantities
+    if (requestedQuantity > averageQuantity * 3 && requestedQuantity > 10) {
       return {
         check: 'order_history',
         passed: false,
