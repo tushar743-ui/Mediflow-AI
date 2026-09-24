@@ -143,7 +143,7 @@
 
 //   async extractWithGroq(text) {
 //     const apiKey = process.env.GROQ_API_KEY;
-//     const model = process.env.LLM_MODEL || "llama-3.1-70b-versatile";
+//     const model = process.env.LLM_MODEL || "qwen/qwen3.8-27b";
 
 //     if (!apiKey) {
 //       throw new Error("GROQ_API_KEY missing in .env");
@@ -334,7 +334,7 @@ export class PrescriptionParser {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "meta-llama/llama-4-scout-17b-16e-instruct", // Groq's vision model
+          model: "qwen/qwen3.8-27b", // Groq's vision-capable model (text + image)
           temperature: 0,
           max_tokens: 1024,
           response_format: { type: "json_object" },
@@ -488,11 +488,9 @@ Rules:
         .rotate()                                         // fix EXIF rotation
         .greyscale()
         .normalize()                                      // auto contrast
-        .sharpen({ sigma: 1.5, m1: 1.0, m2: 0.5 })      // sharpen edges
-        .gamma(1.5)                                       // brighten mid-tones
-        .linear(1.3, -30)                                 // boost contrast
-        .threshold(150)                                   // binarize (tune 130–170)
-        .resize({ width: 2400, withoutEnlargement: true })
+        .resize({ width: 2000 })                          // upscale FIRST so small scans have pixels to read
+        .sharpen({ sigma: 1.0 })                          // light edge sharpening
+        .linear(1.2, -15)                                 // gentle contrast boost
         .png()
         .toFile(processed);
     } catch (e) {
@@ -502,8 +500,6 @@ Rules:
     try {
       const result = await Tesseract.recognize(processed, "eng", {
         tessedit_pageseg_mode: "6",        // assume uniform block of text
-        tessedit_char_whitelist:
-          "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,/-() ",
         preserve_interword_spaces: "1",
       });
       return (result?.data?.text || "").trim();
@@ -518,7 +514,7 @@ Rules:
 
   async extractWithGroq(text) {
     const apiKey = process.env.GROQ_API_KEY;
-    const model = process.env.LLM_MODEL || "llama-3.1-70b-versatile";
+    const model = process.env.LLM_MODEL || "qwen/qwen3.8-27b";
 
     if (!apiKey) throw new Error("GROQ_API_KEY missing in .env");
     if (!text || text.trim().length < 10) return { medicines: [], patientInfo: {} };

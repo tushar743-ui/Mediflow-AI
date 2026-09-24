@@ -10,7 +10,7 @@ import { query } from '../config/database.js';
 export class SafetyPolicyAgent {
   constructor() {
     this.model = new ChatGroq({
-      model: 'llama-3.3-70b-versatile',
+      model: 'qwen/qwen3.8-27b',
       temperature: 0,
       apiKey: process.env.GROQ_API_KEY,
     });

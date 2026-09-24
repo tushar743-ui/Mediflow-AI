@@ -10,7 +10,7 @@ import { ChatGroq } from "@langchain/groq";
 export class ConversationAgent {
   constructor() {
     this.model = new ChatGroq({
-      model: 'llama-3.3-70b-versatile',
+      model: 'qwen/qwen3.8-27b',
       temperature: 0.3,
       apiKey: process.env.GROQ_API_KEY, // Free at console.groq.com
     });

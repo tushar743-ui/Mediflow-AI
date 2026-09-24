@@ -7,7 +7,7 @@ dotenv.config();
 export const langfuse = new Langfuse({
   secretKey: process.env.LANGFUSE_SECRET_KEY,
   publicKey: process.env.LANGFUSE_PUBLIC_KEY,
-  baseUrl: process.env.LANGFUSE_HOST || 'https://cloud.langfuse.com',
+  baseUrl: process.env.LANGFUSE_HOST || process.env.LANGFUSE_BASE_URL || 'https://cloud.langfuse.com',
   flushAt: 1, // Flush immediately for development
   flushInterval: 1000,
 });
