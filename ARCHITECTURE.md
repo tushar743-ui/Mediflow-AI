@@ -523,7 +523,7 @@ CREATE INDEX idx_prescriptions_consumer_medicine
 
 **SQL Injection Prevention**:
 ```javascript
-// ✅ Good: Parameterized queries
+//  Good: Parameterized queries
 await query('SELECT * FROM medicines WHERE id = $1', [medicineId])
 
 // ❌ Bad: String concatenation

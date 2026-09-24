@@ -61,9 +61,9 @@ When you sent that message:
 
 1. **Conversation Agent** understood "refill" + "Metformin"
 2. **Safety Agent** checked:
-   - ✅ Prescription on file
-   - ✅ Stock available (500 tablets)
-   - ✅ Dosage is safe
+   -  Prescription on file
+   -  Stock available (500 tablets)
+   -  Dosage is safe
 3. **Action Agent** created the order
 4. System sent fulfillment webhook + confirmation
 

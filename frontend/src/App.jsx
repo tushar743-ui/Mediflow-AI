@@ -264,7 +264,7 @@ function App() {
     🛠 Admin {adminUnlocked ? '🔓' : '🔒'}
   </button>
 
-  {/* ✅ Inventory below Admin (show only if admin unlocked) */}
+  {/*  Inventory below Admin (show only if admin unlocked) */}
         {adminUnlocked && (
           <button
             className="sidebar-btn"

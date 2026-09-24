@@ -2,7 +2,7 @@
 // import fs from "fs/promises";
 // import sharp from "sharp";
 // import Tesseract from "tesseract.js";
-// import fetch from "node-fetch"; // ✅ Fix: ensures fetch works even on Node < 18
+// import fetch from "node-fetch"; //  Fix: ensures fetch works even on Node < 18
 
 // /**
 //  * Production-Ready Prescription Parser (Groq Based)
@@ -27,7 +27,7 @@
 //           extractedText = await this.ocrPdf(filePath);
 //         }
 //       } else if (fileType && fileType.startsWith("image/")) {
-//         // ✅ HEIC/HEIF often fails depending on sharp build; error handled cleanly
+//         //  HEIC/HEIF often fails depending on sharp build; error handled cleanly
 //         extractedText = await this.ocrImage(filePath);
 //       } else {
 //         return { success: false, error: "Unsupported file type" };
@@ -74,7 +74,7 @@
 //   // ---------------- OCR PDF (Render pages -> OCR) ----------------
 
 //   async ocrPdf(filePath) {
-//     // ✅ If native deps for canvas aren't available, throw a clear error
+//     //  If native deps for canvas aren't available, throw a clear error
 //     const pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.mjs");
 //     const { createCanvas } = await import("@napi-rs/canvas");
 
@@ -86,7 +86,7 @@
 
 //     let combined = "";
 
-//     // ✅ OCR only first 2 pages for speed (you can increase later)
+//     //  OCR only first 2 pages for speed (you can increase later)
 //     for (let i = 1; i <= Math.min(pdf.numPages, 2); i++) {
 //       const page = await pdf.getPage(i);
 //       const viewport = page.getViewport({ scale: 3.0 });
@@ -116,7 +116,7 @@
 //     const processed = `${filePath}_processed.png`;
 
 //     try {
-//       // ✅ Fix: normalize() is the standard method name (normalise may fail on some versions)
+//       //  Fix: normalize() is the standard method name (normalise may fail on some versions)
 //       await sharp(filePath)
 //         .greyscale()
 //         .normalize()
@@ -229,9 +229,20 @@
 
 // services/PrescriptionParser.js
 import fs from "fs/promises";
+import fsSync from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 import sharp from "sharp";
 import Tesseract from "tesseract.js";
 import fetch from "node-fetch";
+
+// Tesseract caches <lang>.traineddata on disk. Vercel's FS is read-only except
+// /tmp, so point it at the traineddata bundled in backend/ when that exists
+// (no write needed), otherwise fall back to a writable dir.
+const BACKEND_DIR = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
+const TESS_CACHE_PATH = fsSync.existsSync(path.join(BACKEND_DIR, "eng.traineddata"))
+  ? BACKEND_DIR
+  : (process.env.VERCEL ? "/tmp" : BACKEND_DIR);
 
 /**
  * Production-Ready Prescription Parser
@@ -251,7 +262,7 @@ export class PrescriptionParser {
         // Strategy 1: Send image directly to Groq vision — best for handwriting
         const visionResult = await this.extractWithGroqVision(filePath);
         if (visionResult?.medicines?.length > 0) {
-          console.log("✅ Vision model extracted medicines successfully");
+          console.log(" Vision model extracted medicines successfully");
           return {
             success: true,
             rawText: "[extracted via vision model]",
@@ -499,6 +510,7 @@ Rules:
 
     try {
       const result = await Tesseract.recognize(processed, "eng", {
+        cachePath: TESS_CACHE_PATH,        // avoid EROFS on read-only hosts
         tessedit_pageseg_mode: "6",        // assume uniform block of text
         preserve_interword_spaces: "1",
       });

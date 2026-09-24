@@ -28,13 +28,14 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 // Initialize prescription parser and uploads directory FIRST
 const prescriptionParser = new PrescriptionParser();
-const uploadsDir = path.join(__dirname, 'uploads');
+// Vercel's filesystem is read-only except /tmp, so uploads must go there in prod
+const uploadsDir = process.env.VERCEL ? '/tmp' : path.join(__dirname, 'uploads');
 fs.mkdir(uploadsDir, { recursive: true }).catch(console.error);
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, path.join(__dirname, 'uploads'));
+    cb(null, uploadsDir);
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
@@ -216,9 +217,9 @@ app.get('/api/health', async (req, res) => {
 /**
  * Upload and parse prescription (supports PDF and images)
  */
-// ✅ Upload, parse, AND save prescriptions into DB
+//  Upload, parse, AND save prescriptions into DB
 app.post('/api/prescription/upload', upload.single('prescription'), async (req, res) => {
-  console.log("✅ upload route entered");
+  console.log(" upload route entered");
   const autoVerify = (process.env.AUTO_VERIFY_PRESCRIPTIONS ?? 'true').toLowerCase() === 'true';
 
   try {
@@ -608,7 +609,7 @@ app.post('/api/stripe/create-payment-intent', async (req, res) => {
       WHERE id = $2
     `, [paymentIntent.id, orderId]);
 
-    console.log(`✅ Payment intent created: ${paymentIntent.id}`);
+    console.log(` Payment intent created: ${paymentIntent.id}`);
 
     res.json({
       clientSecret: paymentIntent.client_secret,
@@ -653,7 +654,7 @@ app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async
         const paymentIntent = event.data.object;
         const orderId = paymentIntent.metadata.orderId;
 
-        console.log(`✅ Payment succeeded for order ${orderId}`);
+        console.log(` Payment succeeded for order ${orderId}`);
 
         // Confirm order after payment
         await orchestrator.confirmOrderAfterPayment(orderId, paymentIntent.id);
@@ -715,7 +716,7 @@ app.put('/api/orders/:orderId/confirm', async (req, res) => {
     const { orderId } = req.params;
     const { paymentIntentId } = req.body;
 
-    console.log(`✅ Confirming order ${orderId} after payment`);
+    console.log(` Confirming order ${orderId} after payment`);
 
     // Call orchestrator to confirm order
     await orchestrator.confirmOrderAfterPayment(orderId, paymentIntentId);
@@ -847,7 +848,7 @@ cron.schedule(predictionSchedule, async () => {
   console.log('⏰ Running scheduled predictive refill analysis...');
   try {
     await predictiveAgent.analyzeAllConsumersForRefills('scheduled-prediction');
-    console.log('✅ Scheduled prediction completed');
+    console.log(' Scheduled prediction completed');
   } catch (error) {
     console.error('❌ Error in scheduled prediction:', error);
   }
@@ -885,7 +886,7 @@ if (!process.env.VERCEL) {
 ║     Status: RUNNING                                           ║
 ║     Port: ${PORT}                                             ║
 ║     Environment: ${process.env.NODE_ENV || 'development'}                              ║
-║     Admin Password: ${process.env.ADMIN_SECRET ? '✅ SET' : '⚠️  Using default (admin123)'}                     ║
+║     Admin Password: ${process.env.ADMIN_SECRET ? ' SET' : '⚠️  Using default (admin123)'}                     ║
 ║                                                               ║
 ║     API Endpoints:                                            ║
 ║     • GET  /                                                  ║

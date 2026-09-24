@@ -42,7 +42,7 @@ function PrescriptionUpload({ apiBaseUrl, onMedicinesExtracted, consumerId, cust
       const formData = new FormData();
       formData.append('prescription', file);
 
-      // ✅ REQUIRED by backend
+      //  REQUIRED by backend
       if (consumerId) {
         formData.append('consumerId', String(consumerId));
       } else if (customerEmail) {

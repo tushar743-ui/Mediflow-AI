@@ -116,7 +116,7 @@
 //           continue;
 //         }
 
-//         console.log(`✅ Medicine matched: ${matchedMedicine.medicine_name} (${matchedMedicine.generic_name})`);
+//         console.log(` Medicine matched: ${matchedMedicine.medicine_name} (${matchedMedicine.generic_name})`);
 
 //         const orderRequest = {
 //           medicineId: matchedMedicine.id,
@@ -158,7 +158,7 @@
 //       };
 //     }
 
-//     console.log(`✅ ${orderResults.length} medicine(s) approved, creating order...`);
+//     console.log(` ${orderResults.length} medicine(s) approved, creating order...`);
 
 //     try {
 //       // Get consumer details
@@ -180,11 +180,11 @@
 //         customerEmail: customerEmail || consumer?.email || 'no-email@example.com'
 //       };
 
-//       // ✅ ONLY create the order — do NOT call confirmOrderAndAutomate here
+//       //  ONLY create the order — do NOT call confirmOrderAndAutomate here
 //       const { order, orderItems } = await this.actionAgent.createOrder(orderData, sessionId);
 
 //       // Build chat message
-//       let responseMessage = `✅ Order prepared! Order #${order.id}\n\n`;
+//       let responseMessage = ` Order prepared! Order #${order.id}\n\n`;
 //       responseMessage += `📦 Items:\n`;
 //       orderResults.forEach((result, index) => {
 //         const lineTotal = (parseFloat(result.medicine.price) * result.orderRequest.quantity).toFixed(2);
@@ -284,7 +284,7 @@
 //         WHERE id = $1
 //       `, [orderId]);
 
-//       console.log(`✅ Order ${orderId} cancelled and inventory restored`);
+//       console.log(` Order ${orderId} cancelled and inventory restored`);
 //       return { success: true, message: 'Order cancelled successfully' };
 
 //     } catch (error) {
@@ -552,9 +552,9 @@ export class AgentOrchestrator {
           continue;
         }
 
-        console.log(`✅ Medicine matched: ${matchedMedicine.medicine_name} (${matchedMedicine.generic_name})`);
+        console.log(` Medicine matched: ${matchedMedicine.medicine_name} (${matchedMedicine.generic_name})`);
 
-        // ✅ KEY FIX: Sanitize quantity BEFORE using it
+        //  KEY FIX: Sanitize quantity BEFORE using it
         // This strips out cases where "Allegra 120" → quantity:120 (that's mg, not tablets)
         const rawQty = medicineRequest?.quantity;
         const qty = this.sanitizeQuantity(matchedMedicine.medicine_name, rawQty);
@@ -590,7 +590,7 @@ export class AgentOrchestrator {
           sessionId
         );
 
-        // ✅ Use sanitized quantity returned from safety agent (double safety net)
+        //  Use sanitized quantity returned from safety agent (double safety net)
         const finalQuantity = safetyResult.sanitizedQuantity ?? qty;
         if (finalQuantity !== qty) {
           console.log(`🔧 Safety agent further corrected quantity: ${qty} → ${finalQuantity}`);
@@ -641,7 +641,7 @@ export class AgentOrchestrator {
       };
     }
 
-    console.log(`✅ ${orderResults.length} medicine(s) approved, creating order...`);
+    console.log(` ${orderResults.length} medicine(s) approved, creating order...`);
 
     try {
       const consumerResult = await query('SELECT * FROM consumers WHERE id = $1', [consumerId]);
@@ -664,7 +664,7 @@ export class AgentOrchestrator {
 
       const { order } = await this.actionAgent.createOrder(orderData, sessionId);
 
-      let responseMessage = `✅ Order prepared! Order #${order.id}\n\n`;
+      let responseMessage = ` Order prepared! Order #${order.id}\n\n`;
       responseMessage += `📦 Items:\n`;
       orderResults.forEach((result, index) => {
         const lineTotal = (parseFloat(result.medicine.price) * result.orderRequest.quantity).toFixed(2);
@@ -757,7 +757,7 @@ export class AgentOrchestrator {
         WHERE id = $1
       `, [orderId]);
 
-      console.log(`✅ Order ${orderId} cancelled and inventory restored`);
+      console.log(` Order ${orderId} cancelled and inventory restored`);
       return { success: true, message: 'Order cancelled successfully' };
 
     } catch (error) {

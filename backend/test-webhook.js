@@ -40,7 +40,7 @@ console.log('Payload:', JSON.stringify(testPayload, null, 2));
 
 axios.post(WEBHOOK_URL, testPayload)
   .then(response => {
-    console.log('✅ Success!');
+    console.log(' Success!');
     console.log('Status:', response.status);
     console.log('Response:', response.data);
   })

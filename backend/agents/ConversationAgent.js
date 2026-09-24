@@ -264,7 +264,7 @@ Return ONLY the JSON object with the EXACT matched name:`;
     );
     
     if (fallbackResult.rows.length > 0) {
-      console.log('✅ Fallback found:', fallbackResult.rows[0].medicine_name);
+      console.log(' Fallback found:', fallbackResult.rows[0].medicine_name);
       await tracer.end(fallbackResult.rows[0]);
       return fallbackResult.rows[0];
     }
@@ -285,7 +285,7 @@ Return ONLY the JSON object with the EXACT matched name:`;
       );
       
       if (result.rows.length > 0) {
-        console.log('✅ Emergency fallback found:', result.rows[0].medicine_name);
+        console.log(' Emergency fallback found:', result.rows[0].medicine_name);
         return result.rows[0];
       }
     } catch (dbError) {

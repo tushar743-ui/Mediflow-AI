@@ -248,7 +248,7 @@ function AdminDashboard({ apiBaseUrl }) {
                           </span>
                         </td>
                         <td>
-                          {order.fulfillment_webhook_sent ? '✅' : '⏳'}
+                          {order.fulfillment_webhook_sent ? '' : '⏳'}
                         </td>
                       </tr>
                     ))}
@@ -283,7 +283,7 @@ function AdminDashboard({ apiBaseUrl }) {
                         <td>{alert.medicine_name || 'N/A'}</td>
                         <td className="alert-message">{alert.alert_message}</td>
                         <td>{formatDate(alert.triggered_at)}</td>
-                        <td>{alert.sent ? '✅ Yes' : '⏳ Pending'}</td>
+                        <td>{alert.sent ? ' Yes' : '⏳ Pending'}</td>
                       </tr>
                     ))}
                   </tbody>

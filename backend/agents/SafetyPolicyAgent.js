@@ -85,7 +85,7 @@ export class SafetyPolicyAgent {
         medicineData
       );
 
-      // ✅ FIX: Sanitize quantity BEFORE any checks
+      //  FIX: Sanitize quantity BEFORE any checks
       // This prevents "Allegra 120" → quantity:120 or "Pacimol 650" → quantity:650
       const sanitizedQuantity = this.sanitizeQuantity(
         medicineData.medicine_name,
@@ -205,7 +205,7 @@ export class SafetyPolicyAgent {
         reason: reasoning.join('; '),
         checks,
         medicineData,
-        // ✅ Return sanitized quantity so orchestrator uses corrected value
+        //  Return sanitized quantity so orchestrator uses corrected value
         sanitizedQuantity
       };
 
@@ -306,7 +306,7 @@ export class SafetyPolicyAgent {
    * Check dosage safety using LLM
    */
   async checkDosageSafety(medicineData, orderRequest, tracer) {
-    // ✅ FIX: Explicitly tell the LLM that numbers in medicine names are strengths, not quantities
+    //  FIX: Explicitly tell the LLM that numbers in medicine names are strengths, not quantities
     const systemPrompt = `You are a pharmaceutical safety expert. Evaluate if the requested quantity and dosage frequency are safe and reasonable.
 
 Medicine information:
@@ -406,7 +406,7 @@ Return this exact format:
     const recentOrders = result.rows;
     const averageQuantity = recentOrders.reduce((sum, order) => sum + order.quantity, 0) / recentOrders.length;
 
-    // ✅ FIX: Only flag if more than 3x average AND absolute quantity > 10
+    //  FIX: Only flag if more than 3x average AND absolute quantity > 10
     // Previously triggered on 2x which is too sensitive for small quantities
     if (requestedQuantity > averageQuantity * 3 && requestedQuantity > 10) {
       return {

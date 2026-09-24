@@ -11,7 +11,7 @@ A production-ready, autonomous, intelligent pharmacy management system powered b
 - **Action Execution Agent**: Executes real backend operations without hallucination
 
 ### Core Capabilities
-- ✅ **Conversational Ordering**: Natural language (text + voice) medicine ordering
+-  **Conversational Ordering**: Natural language (text + voice) medicine ordering
 - 🛡️ **Safety & Compliance**: Automatic prescription verification and dosage safety checks
 - 🔮 **Predictive Refills**: AI-powered consumption analysis with proactive alerts
 - 🤖 **Real-World Actions**: Database updates, webhook triggers, email/WhatsApp notifications

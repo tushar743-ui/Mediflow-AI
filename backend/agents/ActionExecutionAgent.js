@@ -383,7 +383,7 @@ const notificationPayload = {
           );
 
           console.log('\n════════════════════════════════════════════════════════');
-          console.log('✅ ZAPIER WEBHOOK RESPONSE');
+          console.log(' ZAPIER WEBHOOK RESPONSE');
           console.log('════════════════════════════════════════════════════════');
           console.log('📊 Status Code:', response.status);
           console.log('📊 Status Text:', response.statusText);
@@ -397,7 +397,7 @@ const notificationPayload = {
               throw new Error(`Zapier error: ${response.data.message || 'Unknown error'}`);
             }
 
-            console.log('✅ Notification webhook sent successfully!');
+            console.log(' Notification webhook sent successfully!');
             
             tracer.logToolCall(
               'send_notification',
@@ -554,7 +554,7 @@ const notificationPayload = {
         automationCompleted: true
       };
 
-      console.log('✅ Order automation completed successfully\n');
+      console.log(' Order automation completed successfully\n');
 
       await tracer.end(result);
       return result;

@@ -39,7 +39,7 @@
 //           record.description || ''
 //         ]);
 
-//         console.log('✅', record.medicine_name);
+//         console.log('', record.medicine_name);
 //         success++;
 //       } catch (error) {
 //         console.error('❌', record.medicine_name, '-', error.message);
@@ -48,7 +48,7 @@
 //     }
 
 //     console.log(`\n🎉 Import complete!`);
-//     console.log(`✅ Success: ${success}`);
+//     console.log(` Success: ${success}`);
 //     console.log(`❌ Failed: ${failed}`);
 //     process.exit(0);
 

@@ -41,7 +41,7 @@ async function seedDatabase() {
       ]);
     }
 
-    console.log(`✅ Seeded ${medicineData.length} medicines\n`);
+    console.log(` Seeded ${medicineData.length} medicines\n`);
 
     // Seed Consumers and Order History
     console.log('👥 Seeding consumers and order history...');
@@ -75,7 +75,7 @@ async function seedDatabase() {
       `, [parseInt(userId), consumer.name, consumer.email, consumer.phone]);
     }
 
-    console.log(`✅ Seeded ${Object.keys(consumers).length} consumers\n`);
+    console.log(` Seeded ${Object.keys(consumers).length} consumers\n`);
 
     // Create orders from history
     console.log('🛒 Seeding order history...');
@@ -140,7 +140,7 @@ async function seedDatabase() {
       ]);
     }
 
-    console.log(`✅ Seeded ${orderData.length} orders\n`);
+    console.log(` Seeded ${orderData.length} orders\n`);
 
     // Create some sample prescriptions
     console.log('📋 Creating sample prescriptions...');
@@ -163,7 +163,7 @@ async function seedDatabase() {
       }
     }
 
-    console.log(`✅ Created ${prescriptionCount} sample prescriptions\n`);
+    console.log(` Created ${prescriptionCount} sample prescriptions\n`);
 
     console.log('🎉 Database seeding completed successfully!\n');
     console.log('Summary:');

@@ -262,7 +262,7 @@
 //               )}
 //               {message.metadata?.orderCreated && !message.metadata?.needsPayment && (
 //                 <div className="order-confirmation">
-//                   ✅ Order #{message.metadata.orderId} Confirmed!
+//                    Order #{message.metadata.orderId} Confirmed!
 //                 </div>
 //               )}
 //               {message.metadata?.requiresClarification && (
@@ -524,7 +524,7 @@ function ChatInterface({ consumer, sessionId, apiBaseUrl, clerkUser }) {
   const [showOrderReview, setShowOrderReview] = useState(false);
   const [currentOrderDetails, setCurrentOrderDetails] = useState(null);
 
-  // ✅ NEW: quantity popup state
+  //  NEW: quantity popup state
   const [showQuantityModal, setShowQuantityModal] = useState(false);
   const [pendingQtyItems, setPendingQtyItems] = useState([]); // from backend pendingQuantitySelections
 
@@ -609,7 +609,7 @@ function ChatInterface({ consumer, sessionId, apiBaseUrl, clerkUser }) {
 
       setMessages((prev) => [...prev, assistantMessage]);
 
-      // ✅ NEW: trigger quantity popup
+      //  NEW: trigger quantity popup
       if (data?.next_action === 'ask_quantity' && Array.isArray(data?.pendingQuantitySelections)) {
         setPendingQtyItems(data.pendingQuantitySelections);
         setShowQuantityModal(true);
@@ -645,7 +645,7 @@ function ChatInterface({ consumer, sessionId, apiBaseUrl, clerkUser }) {
     }
   };
 
-  // ✅ NEW: when user confirms quantities, send follow-up order message
+  //  NEW: when user confirms quantities, send follow-up order message
   const handleConfirmQuantities = async (itemsWithQty) => {
     setShowQuantityModal(false);
 
@@ -717,7 +717,7 @@ function ChatInterface({ consumer, sessionId, apiBaseUrl, clerkUser }) {
 
   return (
     <div className="chat-interface">
-      {/* ✅ NEW: Quantity popup */}
+      {/*  NEW: Quantity popup */}
       <QuantityModal
         open={showQuantityModal}
         items={pendingQtyItems}
@@ -789,7 +789,7 @@ function ChatInterface({ consumer, sessionId, apiBaseUrl, clerkUser }) {
               )}
 
               {message.metadata?.orderCreated && !message.metadata?.needsPayment && (
-                <div className="order-confirmation">✅ Order #{message.metadata.orderId} Confirmed!</div>
+                <div className="order-confirmation"> Order #{message.metadata.orderId} Confirmed!</div>
               )}
 
               {/* Optional: show a small hint if backend asks clarification */}
