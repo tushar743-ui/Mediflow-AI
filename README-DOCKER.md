@@ -1,4 +1,4 @@
-# 🐳 MediFlow AI - Quick Start with Docker
+# MediFlow AI - Quick Start with Docker
 
 Run the entire MediFlow AI pharmacy system in 3 steps!
 
@@ -41,7 +41,7 @@ ADMIN_SECRET=your_password
 docker-compose up -d
 ```
 
-**That's it!** 🎉
+**That's it!** 
 
 ## Access the System
 

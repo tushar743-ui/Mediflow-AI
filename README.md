@@ -1,8 +1,8 @@
-# 🏥 Agentic AI Pharmacy System
+# Agentic AI Pharmacy System
 
 A production-ready, autonomous, intelligent pharmacy management system powered by a multi-agent AI architecture. The system transforms traditional pharmacy operations into a proactive, policy-aware ecosystem that behaves like a licensed expert pharmacist.
 
-## 🌟 Key Features
+## Key Features
 
 ### Multi-Agent Architecture
 - **Conversation Agent**: Natural language understanding with fuzzy medicine matching
@@ -12,13 +12,13 @@ A production-ready, autonomous, intelligent pharmacy management system powered b
 
 ### Core Capabilities
 -  **Conversational Ordering**: Natural language (text + voice) medicine ordering
-- 🛡️ **Safety & Compliance**: Automatic prescription verification and dosage safety checks
-- 🔮 **Predictive Refills**: AI-powered consumption analysis with proactive alerts
-- 🤖 **Real-World Actions**: Database updates, webhook triggers, email/WhatsApp notifications
-- 📊 **Full Observability**: Langfuse integration for complete agent tracing
-- 🎤 **Voice Interface**: Web Speech API integration for voice input/output
+- **Safety & Compliance**: Automatic prescription verification and dosage safety checks
+- **Predictive Refills**: AI-powered consumption analysis with proactive alerts
+- **Real-World Actions**: Database updates, webhook triggers, email/WhatsApp notifications
+- **Full Observability**: Langfuse integration for complete agent tracing
+- **Voice Interface**: Web Speech API integration for voice input/output
 
-## 🏗️ System Architecture
+## System Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -64,7 +64,7 @@ A production-ready, autonomous, intelligent pharmacy management system powered b
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## 📋 Tech Stack
+## Tech Stack
 
 ### Frontend
 - **React 18**: Modern hooks-based architecture
@@ -87,7 +87,7 @@ A production-ready, autonomous, intelligent pharmacy management system powered b
 - **LangChain**: LLM orchestration framework
 - **Multi-Agent Pattern**: Specialized agents for different tasks
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 - Node.js 18+ and npm
@@ -154,7 +154,7 @@ npm run dev
    - "What medicines do you have for diabetes?"
    - Click the microphone icon to use voice input
 
-## 🎯 Key Workflows
+## Key Workflows
 
 ### 1. Conversational Ordering
 
@@ -164,9 +164,9 @@ npm run dev
 1. **Conversation Agent** extracts intent: "refill" + "BP meds"
 2. Fuzzy matches to "Amlodipine 5mg" or "Lisinopril 10mg"
 3. **Safety Agent** checks:
-   - Prescription requirement ✓
-   - Stock availability ✓
-   - Valid prescription on file ✓
+   - Prescription requirement
+   - Stock availability
+   - Valid prescription on file
 4. **Action Agent** creates order, updates inventory
 5. Triggers fulfillment webhook + sends confirmation
 
@@ -195,7 +195,7 @@ npm run dev
 1. **Safety Agent** checks prescription requirement
 2. Responds: "Prescription required but not found. Please upload a valid prescription."
 
-## 📊 Admin Dashboard
+## Admin Dashboard
 
 Access via the "Admin" tab to monitor:
 
@@ -223,7 +223,7 @@ Access via the "Admin" tab to monitor:
 - Execution status
 - Timestamp tracking
 
-## 🔍 Observability with Langfuse
+## Observability with Langfuse
 
 All agent actions are traced in Langfuse:
 
@@ -238,7 +238,7 @@ Access your Langfuse dashboard to see:
 - Decision trees
 - Performance metrics
 
-## 🗄️ Database Schema
+## Database Schema
 
 ### Core Tables
 - `medicines`: Medicine master data with stock
@@ -252,7 +252,7 @@ Access your Langfuse dashboard to see:
 - `conversation_sessions`: Chat sessions
 - `conversation_messages`: Message history
 
-## 🔧 Configuration
+## Configuration
 
 ### Scheduled Predictions
 Edit `.env`:
@@ -274,7 +274,7 @@ Voice input/output uses browser's Web Speech API:
 - Requires microphone permissions
 - Configurable in VoiceInput component
 
-## 📱 API Endpoints
+## API Endpoints
 
 ### Conversation
 - `POST /api/conversation/start` - Start new session
@@ -300,7 +300,7 @@ Voice input/output uses browser's Web Speech API:
 - `GET /api/admin/agent-actions` - Agent activity log
 - `POST /api/admin/run-predictions` - Manually trigger predictions
 
-## 🎨 Customization
+## Customization
 
 ### Adding New Medicines
 1. Update `database/medicine_master.csv`
@@ -320,7 +320,7 @@ To use Deepgram or ElevenLabs instead of Web Speech API:
 2. Update `VoiceInput.jsx` to use provider's SDK
 3. Update `ChatInterface.jsx` for TTS
 
-## 🚨 Important Notes
+## Important Notes
 
 ### Production Deployment
 - Set `NODE_ENV=production`
@@ -348,7 +348,7 @@ To use Deepgram or ElevenLabs instead of Web Speech API:
   - Regulatory approval
   - Professional oversight
 
-## 📈 Scaling Considerations
+## Scaling Considerations
 
 ### Database
 - Neon scales automatically
@@ -366,7 +366,7 @@ To use Deepgram or ElevenLabs instead of Web Speech API:
 - Implement rate limiting
 - Consider fine-tuned models for classification
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 ### Database Connection Issues
 ```bash
@@ -395,11 +395,11 @@ psql $DATABASE_URL -c "\dt"
 - Check logs for errors
 - Manually trigger via admin panel
 
-## 📝 License
+## License
 
 This project is a demonstration of agentic AI architecture for educational purposes.
 
-## 🤝 Contributing
+## Contributing
 
 This is a production-ready template. Key areas for enhancement:
 - Additional safety rules
@@ -409,7 +409,7 @@ This is a production-ready template. Key areas for enhancement:
 - Mobile app development
 - Advanced analytics dashboard
 
-## 📞 Support
+## Support
 
 For issues or questions:
 1. Check troubleshooting section

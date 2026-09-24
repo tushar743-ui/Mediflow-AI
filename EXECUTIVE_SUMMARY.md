@@ -1,4 +1,4 @@
-# 🎯 Executive Summary - Agentic AI Pharmacy System
+# Executive Summary - Agentic AI Pharmacy System
 
 ## What is This?
 
@@ -56,32 +56,32 @@ Multiple enforcement layers:
 **Conversational Ordering**:
 ```
 User: "I need my BP meds"
-  ↓ Conversation Agent extracts intent
-  ↓ Fuzzy matches to "Amlodipine 5mg"
-  ↓ Safety Agent verifies all rules
-  ↓ Action Agent creates order
-  ↓ Webhooks + notifications sent
+  Conversation Agent extracts intent
+  Fuzzy matches to "Amlodipine 5mg"
+  Safety Agent verifies all rules
+  Action Agent creates order
+  Webhooks + notifications sent
 Response: "Order #123 confirmed!"
 ```
 
 **Predictive Intelligence**:
 ```
 Daily at 9 AM:
-  ↓ Analyze all consumers
-  ↓ Calculate consumption rates
-  ↓ Predict depletion dates
-  ↓ Generate proactive alerts
-  ↓ User sees alert on login
+  Analyze all consumers
+  Calculate consumption rates
+  Predict depletion dates
+  Generate proactive alerts
+  User sees alert on login
 ```
 
 **Safety Enforcement**:
 ```
 Order Request
-  ↓ Check prescription requirement
-  ↓ Verify stock availability
-  ↓ Analyze dosage safety (LLM)
-  ↓ Review order history
-  ↓ Decision: APPROVED/REJECTED/REQUIRES_ACTION
+  Check prescription requirement
+  Verify stock availability
+  Analyze dosage safety (LLM)
+  Review order history
+  Decision: APPROVED/REJECTED/REQUIRES_ACTION
 ```
 
 ## What's Included
@@ -162,7 +162,7 @@ Order Request
 - Admin dashboard
 - Complete observability
 
-### 🔧 Needs for Production
+### Needs for Production
 - User authentication
 - HTTPS deployment
 - Real email/WhatsApp integration
@@ -210,16 +210,16 @@ This architecture works for any domain requiring:
 
 Most "AI" systems are just chatbots with database access. This is a **true autonomous agent system**:
 
-❌ **Not**: Single AI that does everything
+**Not**: Single AI that does everything
  **Is**: Specialized agents with clear responsibilities
 
-❌ **Not**: Simulated actions
+**Not**: Simulated actions
  **Is**: Real database operations and webhooks
 
-❌ **Not**: Black box decisions
+**Not**: Black box decisions
  **Is**: Complete observability and audit trails
 
-❌ **Not**: Reactive support
+**Not**: Reactive support
  **Is**: Proactive engagement
 
 ## Next Steps

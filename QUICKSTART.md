@@ -1,4 +1,4 @@
-# 🚀 Quick Start Guide
+# Quick Start Guide
 
 ## 5-Minute Setup
 
@@ -53,7 +53,7 @@ npm run dev
 1. Open http://localhost:3000
 2. Select "John Smith"
 3. Say or type: "I need to refill my Metformin"
-4. Watch the multi-agent system work! 🎉
+4. Watch the multi-agent system work!
 
 ## What Just Happened?
 
@@ -75,7 +75,7 @@ Check the Admin tab to see:
 ## Try These Commands
 
 ### Voice Commands
-Click the 🎤 button and say:
+Click the button and say:
 - "Order 30 Paracetamol tablets"
 - "What medicines do you have for allergies?"
 - "Show my recent orders"
@@ -88,10 +88,10 @@ Type in the chat:
 
 ### Proactive Features
 1. Go to Admin tab
-2. Click "🔮 Run Predictions"
+2. Click "Run Predictions"
 3. Switch back to Chat
 4. Logout and login as "Sarah Johnson"
-5. See proactive refill reminder! 🔔
+5. See proactive refill reminder!
 
 ## Common First-Run Issues
 
@@ -169,11 +169,11 @@ Try ordering more than available:
 
 ## Support Resources
 
-- 📖 Full documentation: README.md
-- 🏗️ Architecture details: ARCHITECTURE.md
-- 🚀 Deployment guide: DEPLOYMENT.md
-- 🐛 Troubleshooting: Check agent logs in admin panel
-- 📊 Monitoring: Langfuse dashboard (if configured)
+- Full documentation: README.md
+- Architecture details: ARCHITECTURE.md
+- Deployment guide: DEPLOYMENT.md
+- Troubleshooting: Check agent logs in admin panel
+- Monitoring: Langfuse dashboard (if configured)
 
 ## Development Tips
 
@@ -203,6 +203,6 @@ console.log(response);
 
 ---
 
-**You're ready to go! 🎉**
+**You're ready to go! **
 
 The system is now running and ready to demonstrate autonomous, intelligent pharmacy operations with full observability and safety enforcement.

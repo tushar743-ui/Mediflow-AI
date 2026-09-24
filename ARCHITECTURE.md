@@ -1,4 +1,4 @@
-# 🏗️ System Architecture Deep Dive
+# System Architecture Deep Dive
 
 ## Overview
 
@@ -53,13 +53,13 @@ Multiple safety layers:
 **Key Methods**:
 ```javascript
 extractIntent(userMessage, conversationHistory, sessionId)
-  → { intent, medicines, quantity, clarification_needed }
+  { intent, medicines, quantity, clarification_needed }
 
 fuzzyMatchMedicine(medicineName, sessionId)
-  → { matched_medicine, confidence, alternatives }
+  { matched_medicine, confidence, alternatives }
 
 generateResponse(context, sessionId)
-  → conversationalText
+  conversationalText
 ```
 
 **Example Flow**:
@@ -142,9 +142,9 @@ if (requestedQuantity > averageQuantity * 2) {
 
 **Decision Matrix**:
 ```
-All checks pass → APPROVED
-Critical check fails → REJECTED
-Non-critical fails → REQUIRES_ACTION
+All checks pass APPROVED
+Critical check fails REJECTED
+Non-critical fails REQUIRES_ACTION
 ```
 
 ### Predictive Intelligence Agent
@@ -289,35 +289,35 @@ await query(`
 
 ```
 User Message
-    ↓
+
 ┌─────────────────────────┐
 │ Orchestrator            │
 │ 1. Route to agents      │
 │ 2. Coordinate workflow  │
 │ 3. Return response      │
 └─────────────────────────┘
-    ↓
+
 ┌─────────────────────────┐
 │ Conversation Agent      │
 │ Extract intent          │
 │ Fuzzy match medicine    │
 └─────────────────────────┘
-    ↓
+
 ┌─────────────────────────┐
 │ Safety Agent            │
 │ Run all safety checks   │
 │ Make decision           │
 └─────────────────────────┘
-    ↓
+
 Decision: APPROVED?
-    ↓ Yes
+    Yes
 ┌─────────────────────────┐
 │ Action Agent            │
 │ Create order            │
 │ Update inventory        │
 │ Trigger webhooks        │
 └─────────────────────────┘
-    ↓
+
 Response to User
 ```
 
@@ -327,31 +327,31 @@ Response to User
 
 ```
 Orchestrator.processUserMessage()
-  ↓
+
 ConversationAgent.extractIntent()
   Returns: { intent: "order", medicines: ["Metformin"], quantity: 60 }
-  ↓
+
 ConversationAgent.fuzzyMatchMedicine("Metformin")
   Returns: { matched: "Metformin 500mg", confidence: 0.95 }
-  ↓
+
 SafetyAgent.evaluateOrderSafety()
-  ├─ Check 1: Stock (500 tablets) ✓
-  ├─ Check 2: Prescription (on file) ✓
-  ├─ Check 3: Dosage (twice daily for 30 days) ✓
-  └─ Check 4: History (consistent with past) ✓
+  ├─ Check 1: Stock (500 tablets)
+  ├─ Check 2: Prescription (on file)
+  ├─ Check 3: Dosage (twice daily for 30 days)
+  └─ Check 4: History (consistent with past)
   Returns: { decision: "APPROVED" }
-  ↓
+
 ActionAgent.createOrder()
   ├─ INSERT INTO orders
   ├─ INSERT INTO order_items
   ├─ UPDATE medicines SET stock = stock - 60
   └─ Returns: { order: { id: 123 } }
-  ↓
+
 ActionAgent.confirmOrderAndAutomate()
   ├─ UPDATE orders SET status = 'confirmed'
   ├─ POST webhook (fulfillment)
   └─ Send email/WhatsApp confirmation
-  ↓
+
 ConversationAgent.generateResponse()
   Returns: "Perfect! Order #123 confirmed..."
 ```
@@ -377,36 +377,36 @@ ConversationAgent.generateResponse()
 **Order Created**:
 ```
 Order Created
-  ↓
+
 ActionAgent.confirmOrderAndAutomate()
-  ├→ Webhook: Fulfillment system
-  ├→ Email: Customer confirmation
-  ├→ WhatsApp: Order notification
-  └→ Database: Update stock, log action
+  ├Webhook: Fulfillment system
+  ├Email: Customer confirmation
+  ├WhatsApp: Order notification
+  └Database: Update stock, log action
 ```
 
 **Low Stock Detected**:
 ```
 Inventory Update
-  ↓
+
 if (newStock < threshold)
-  ↓
+
 ActionAgent.triggerLowStockAlert()
-  ├→ Create proactive alert
-  ├→ Notify procurement team
-  └→ Admin dashboard update
+  ├Create proactive alert
+  ├Notify procurement team
+  └Admin dashboard update
 ```
 
 **Prediction Scheduled**:
 ```
 Cron: Daily 9 AM
-  ↓
+
 PredictiveAgent.analyzeAllConsumers()
-  ├→ For each consumer:
-  │   ├→ Calculate depletion dates
-  │   ├→ LLM decision on alerting
-  │   └→ Create proactive alerts
-  └→ Langfuse: Log predictions
+  ├For each consumer:
+  │   ├Calculate depletion dates
+  │   ├LLM decision on alerting
+  │   └Create proactive alerts
+  └Langfuse: Log predictions
 ```
 
 ## Observability Architecture
@@ -526,7 +526,7 @@ CREATE INDEX idx_prescriptions_consumer_medicine
 //  Good: Parameterized queries
 await query('SELECT * FROM medicines WHERE id = $1', [medicineId])
 
-// ❌ Bad: String concatenation
+// Bad: String concatenation
 await query(`SELECT * FROM medicines WHERE id = ${medicineId}`)
 ```
 
